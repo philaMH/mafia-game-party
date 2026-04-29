@@ -431,3 +431,38 @@
 ### 🟡 OPERATIONS
 - [ ] (placeholder)
 
+---
+
+## Iteration 9 Stage Progress (2026-04-29) — Bug · iOS Safari 새로고침 시 연결 실패
+
+**브랜치**: `worktree-bug+safari`
+**트리거**: 사용자 결함 보고 — 휴대폰 Safari 접속 후 새로고침 시 alternation 패턴(1회 실패 → 2회 성공 → 3회 실패) 으로 WebSocket 미연결.
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~8 산출물 보존
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration9-bug-safari-reload-requirements.md` v1.0 (사용자 승인 2026-04-29T23:55Z, Q1=A/Q2=A/Q3=A/Q4=A)
+- [x] User Stories — SKIP (단일 결함 패치, 페르소나/시나리오 변동 없음)
+- [x] Workflow Planning — `construction/plans/iteration9-execution-plan.md` v1.0 (사용자 승인 2026-04-30T00:00Z)
+- [x] Application Design — SKIP (컴포넌트 추가/제거 없음, 단일 hook 보강)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION (예정)
+
+#### U1 Game Core / U2 Session/Persistence/Announce / U3 Realtime Transport / U4 HTTP Bootstrap
+- [ ] 모든 단계 SKIP 예정 (Go 코드 변경 없음)
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — `u5-web-frontend/functional-design/iteration9-patch.md` v1.0 (사용자 승인 2026-04-30T00:05Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration9-u5-code-generation-plan.md` v1.0 (사용자 승인 2026-04-30T00:10Z)
+- [x] Code Generation — Step A~G 완료 (2026-04-30T00:15Z). `useWebSocket.ts` (+40, -1) + 신규 `useWebSocket.test.ts` (169 라인 / I9-W1~W5 5 케이스). `npm test` 71 PASS (이전 66 → +5), JS gzip 65.71 KB (+0.09 KB), `go test ./... -race` 6 패키지 PASS, go build 17.97 MB. `useWebSocket.ts` 단위 커버리지 85.39% (이전 0건 → 신규 진입 라인 100% 커버). 사용자 승인 게이트 대기.
+
+#### 공통
+- [x] Build and Test — `build-and-test/iteration9-test-results.md` v1.0 (사용자 최종 승인 2026-04-30T00:25Z). FR-1~FR-5 매트릭스 PASS, `npm test` 71 PASS (이전 66 → +5), `go test ./... -race` 6 패키지 PASS, JS gzip 65.71 KB (+0.09 KB), go binary 17.97 MB. `useWebSocket.ts` 단위 커버리지 0% → 85.39%.
+
+**Iteration 9 종료** (2026-04-30T00:25Z) — iOS Safari 새로고침 시 alternation 패턴 차단. `useWebSocket.ts` 라이프사이클 보강 (pagehide 동기 close / pageshow BFCache 풀 리로드 / onclose race 가드 2건). 변경 미커밋 — 사용자 commit 지시 대기.
+
+### 🟡 OPERATIONS
+- [ ] iOS Safari 실기 회귀 (사용자 트리거 — 본 워크플로우는 자동 검증 불가): 휴대폰 Safari 새로고침 5회 / 게임 진행 중 새로고침 + token resume / 다른 탭 이동 후 BFCache 복원 / 기내 모드 토글 후 reconnect / Chrome·Firefox·Edge 데스크톱 회귀
+

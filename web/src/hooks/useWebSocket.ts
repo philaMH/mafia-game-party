@@ -38,6 +38,10 @@ export function useWebSocket({ url, dispatch, tokenIO }: UseWebSocketParams): Us
 
   useEffect(() => {
     closedRef.current = false;
+    // `abandoned` is connection-local: a late onclose that fires after this
+    // effect's cleanup must not re-arm the reconnect timer or null out a ref
+    // that already points to the next mount's socket.
+    let abandoned = false;
 
     const connect = (): void => {
       if (closedRef.current) return;
@@ -65,7 +69,12 @@ export function useWebSocket({ url, dispatch, tokenIO }: UseWebSocketParams): Us
       };
 
       ws.onclose = () => {
-        wsRef.current = null;
+        if (abandoned) return;
+        // Only null the ref when *this* socket still owns it — a delayed
+        // close from a prior conn must not erase the current one.
+        if (wsRef.current === ws) {
+          wsRef.current = null;
+        }
         if (closedRef.current) return;
         const idx = Math.min(attemptRef.current, BACKOFF_MS.length - 1);
         const delay = BACKOFF_MS[idx] ?? 16000;
@@ -81,7 +90,35 @@ export function useWebSocket({ url, dispatch, tokenIO }: UseWebSocketParams): Us
 
     connect();
 
+    // iOS Safari serializes WebSocket connections per origin: a new socket
+    // can hang waiting for the previous one's TCP FIN. React's useEffect
+    // cleanup is not guaranteed to run synchronously before page unload, so
+    // we close on `pagehide` (which IS synchronous) to send FIN ahead of
+    // the next page's open.
+    const onPageHide = () => {
+      const ws = wsRef.current;
+      if (ws) {
+        try {
+          ws.close(1000, "pagehide");
+        } catch {
+          // already closing/closed
+        }
+      }
+    };
+    // BFCache restores a page with its JS state intact, but the WebSocket
+    // reference is a zombie — the OS already closed the underlying socket.
+    // Force a full reload so the saved player token (if any) drives a clean
+    // resume on a fresh connection.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+
     return () => {
+      abandoned = true;
       closedRef.current = true;
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -95,6 +132,8 @@ export function useWebSocket({ url, dispatch, tokenIO }: UseWebSocketParams): Us
         }
         wsRef.current = null;
       }
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
