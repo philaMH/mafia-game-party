@@ -109,8 +109,12 @@ func (e *engine) applyElimination(id PlayerID) []EventEnvelope {
 	if id == e.state.MafiaRepresentativeID {
 		events = append(events, e.reassignMafiaRepresentative(id)...)
 	}
-	if endEv, ok := e.checkEnd(); ok {
-		events = append(events, endEv...)
+	// Iteration 9 FR-1/FR-2: defer GameEnded so the Eliminated subtitle
+	// (and its audio cue) stays visible for defaultFinalResultBufferSeconds
+	// before the EndScreen takes over. Phase remains VOTE/RECOUNT during
+	// the buffer; Tick fires the actual GameEnded once the deadline hits.
+	if reason, winner, ok := e.evaluateEnd(); ok {
+		e.scheduleGameEnd(reason, winner)
 		return events
 	}
 	events = append(events, e.transitionVoteToNight()...)

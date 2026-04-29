@@ -136,6 +136,20 @@ func advanceNightStep(t *testing.T, e Engine, clock *FakeClock) {
 	}
 }
 
+// runPendingEndTick advances the FakeClock past the pending result-buffer
+// (Iteration 9, defaultFinalResultBufferSeconds) and ticks the engine so
+// firePendingEnd flushes the deferred GameEnded. Returns the events emitted
+// by Tick.
+func runPendingEndTick(t *testing.T, e Engine, clock *FakeClock) []EventEnvelope {
+	t.Helper()
+	clock.Advance(time.Duration(defaultFinalResultBufferSeconds)*time.Second + time.Millisecond)
+	_, evs, err := e.Tick(clock.Now())
+	if err != nil {
+		t.Fatalf("runPendingEndTick: %v", err)
+	}
+	return evs
+}
+
 // allRoles returns IDs by role, useful for handler-level tests that need
 // to address specific roles.
 func allRoles(s State) (mafia []PlayerID, doctor PlayerID, police PlayerID, citizens []PlayerID) {

@@ -120,6 +120,13 @@ const (
 	defaultNightDoctorSeconds = 10
 	defaultNightIntroSeconds  = 20
 	defaultDayIntroSeconds    = 5
+
+	// defaultFinalResultBufferSeconds is the time the engine keeps the
+	// previous phase visible after a vote-end (Eliminated) or night-end
+	// (DeathAnnounced/PeacefulNight) before emitting GameEnded. Iteration 9
+	// FR-2: lets the host's final result subtitle/cue play before the
+	// EndScreen takes over. HOST_FORCE_END bypasses this buffer.
+	defaultFinalResultBufferSeconds = 5
 )
 
 // DefaultOptions returns the recommended defaults derived from
@@ -191,6 +198,20 @@ type PoliceCheckRecord struct {
 	Team   Team     `json:"team"`
 }
 
+// PendingGameEnd holds a deferred GameEnded payload while the engine keeps
+// the previous phase visible for the result-announcement buffer (Iteration 9
+// FR-2). When non-nil, Tick will emit the actual GameEnded event once
+// Deadline has passed; if nil, the engine has no pending end. HOST_FORCE_END
+// bypasses this entirely and clears any in-flight pending end.
+//
+// Wire 노출은 무해 (TS 클라이언트가 unknown 필드를 무시) — 모든 실제 화면
+// 전환은 GameEnded 도착 시점에 일어난다.
+type PendingGameEnd struct {
+	Reason   EndReason `json:"reason"`
+	Winner   *Team     `json:"winner,omitempty"`
+	Deadline time.Time `json:"deadline"`
+}
+
 // State is the entire serialized state of a single mafia game. It is the
 // source of truth that callers persist via Engine.Snapshot.
 type State struct {
@@ -242,6 +263,13 @@ type State struct {
 	// End fields (set when Phase == PhaseEnd)
 	Winner    *Team      `json:"winner,omitempty"`
 	EndReason *EndReason `json:"endReason,omitempty"`
+
+	// PendingGameEnd is set when a vote/night transition has met the win
+	// condition but the actual GameEnded emission is deferred by
+	// defaultFinalResultBufferSeconds (Iteration 9 FR-2). Tick checks this
+	// before any phase progression and fires firePendingEnd when the
+	// deadline arrives. nil outside the buffer window.
+	PendingGameEnd *PendingGameEnd `json:"pendingGameEnd,omitempty"`
 
 	// Last Tick processed time (used for idempotent Tick)
 	LastTickAt time.Time `json:"lastTickAt"`

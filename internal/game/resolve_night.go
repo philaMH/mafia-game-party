@@ -133,8 +133,11 @@ func (e *engine) resolveNight() ([]EventEnvelope, error) {
 	}))
 	events = append(events, deathFollowUp...)
 
-	if endEv, ok := e.checkEnd(); ok {
-		events = append(events, endEv...)
+	// Iteration 9 FR-1/FR-2: keep Phase=DAY so the DeathAnnounced /
+	// PeacefulNight subtitle and its cue render uninterrupted; Tick will
+	// fire GameEnded once the buffer deadline elapses.
+	if reason, winner, ok := e.evaluateEnd(); ok {
+		e.scheduleGameEnd(reason, winner)
 	}
 	return events, nil
 }

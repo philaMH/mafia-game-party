@@ -1790,3 +1790,164 @@ main 에는 PR#2 (`worktree-feature+main-page` Sub-feature B) 가 같은 Iterati
 **Context**: Iteration 8 사후 튜닝 누적 2회차. 미커밋.
 
 ---
+
+## Iteration 9 — 신규 결함 보고 (Welcome Back)
+**Timestamp**: 2026-04-30T00:10:00Z
+**User Input**: "투표 결과 또는 전날 밤의 결과가 호스트 화면에서 보여지고 다음 페이즈로 진행되었으면 좋겠습니다.
+왜: 투표 또는 전날 밤의 액션으로 승리자가 결정되는 경우, 화면에서 바로 마피아 또는 시민의 승리 화면이 나옵니다. 게임의 흥미를 지속하기 위해 투표 결과 또는 전날 밤의 결과가 먼저 공지되었으면 좋겠습니다."
+**AI Response**: 기존 AI-DLC 프로젝트 (Iteration 1~8 완료) 의 Iteration 9 진입. Worktree `worktree-fix+final-result`. 현재 결함 — `internal/game/tally.go::applyElimination` 와 `internal/game/resolve_night.go::resolveNight` 에서 `Eliminated` / `DeathAnnounced` 직후 같은 batch 내에서 `checkEnd` → `GameEnded` 이벤트가 즉시 발행되어, U5 reducer 가 Phase=END 로 전환하면서 SubtitleArea 의 마지막 사망/제거 안내가 가려지고 EndScreen 이 즉시 노출됨. 사용자는 사망/제거 안내 + (옵션) cue 재생 시간 확보 후 승리 화면이 나오기를 원함. Welcome Back 절차 진행 + Workspace Detection (Brownfield, 5단위 보존) + audit 로그 작성.
+**Context**: Iteration 9 시작. Workspace Detection 단계.
+
+---
+
+## Iteration 9 — Requirements Analysis 질문 파일 작성
+**Timestamp**: 2026-04-30T00:20:00Z
+**User Input**: (없음 — Workspace Detection 종료 후 자동 진행)
+**AI Response**: 결함의 코드 위치(`tally.applyElimination` 와 `resolveNight`) 와 U5 reducer 영향 분석 후 8개 모호점 도출 → `aidlc-docs/inception/requirements/iteration9-fix-final-result-questions.md` 작성:
+  Q1 트리거 범위 (vote/night/both)
+  Q2 결과→END 버퍼 초 (5/8/10/15)
+  Q3 end.* cue 위치
+  Q4 Pause 영향
+  Q5 HOST_FORCE_END 처리
+  Q6 신규 Phase 도입 여부 (Phase 추가 vs 단순 Tick 지연)
+  Q7 화면 범위 (서버 단일 vs 호스트 only)
+  Q8 Voice off/mp3 누락 시 동작
+각 질문에 합리적 기본값을 미리 [Answer]: 에 채워둠 (Q1=A / Q2=A / Q3=A / Q4=A / Q5=A / Q6=A / Q7=A / Q8=A). 사용자 검토 후 변경 또는 그대로 승인 가능.
+**Context**: Requirements Analysis Step 6 GATE — 사용자 답변 대기.
+
+---
+
+## Iteration 9 — Requirements 답변 승인 + 요구사항 문서 v1.0 작성
+**Timestamp**: 2026-04-30T00:35:00Z
+**User Input**: "승인"
+**AI Response**: 질문지 기본값(Q1~Q8 모두 A) 그대로 확정. `inception/requirements/iteration9-fix-final-result-requirements.md` v1.0 작성:
+  의도 분석(Bug Fix·Simple)
+  결함 분석 (`tally.applyElimination` + `resolveNight` 의 즉시 GameEnded 호출, U5 reducer 즉시 phase=END 반영)
+  FR-1~FR-8 (양 경로 / 5초 / end.* cue 위치 / Pause 영향 / HOST_FORCE_END 즉시 / 신규 Phase 미도입 → State.PendingGameEnd 필드 + Tick 처리 / 화면 자동 일치 / 음성 무관 5초 고정)
+  NFR-1~NFR-6 (성능·결정성·snapshot·pause·커버리지·회귀)
+  AC-1~AC-6 (vote-end / night-end / peaceful / pause / force-end / snapshot resume)
+  영향 단위: U1 변경, U2/U3/U5 변동 없음 예상.
+사용자 승인 → Workflow Planning 진입 예정. aidlc-state.md Iteration 9 Requirements Analysis 체크박스 [x] 마킹.
+**Context**: Inception Step 7~9 완료. 다음: Workflow Planning.
+
+---
+
+## Iteration 9 — Workflow Planning v1.0 작성
+**Timestamp**: 2026-04-30T00:45:00Z
+**User Input**: "approve and continue"
+**AI Response**: `aidlc-docs/construction/plans/iteration9-execution-plan.md` v1.0 작성:
+  Risk=Low / Rollback=Easy / Testing=Moderate (기존 시나리오 마이그레이션)
+  Mermaid 시각화
+  단위별 결정: U1 EXECUTE (FD patch + Code Gen Plan + Code Gen Step A~I), U2/U3/U4/U5 SKIP, 공통 Build & Test
+  §4 FD 개요: PendingGameEnd struct + State 필드 + defaultFinalResultBufferSeconds=5 + scheduleGameEnd/firePendingEnd helper + Tick 가드 + canPause/handleResumeGame 변경 + handleForceEnd 클리어
+  §5 Code Gen Plan Step A~I (types/clone/end/tally/resolve_night/tick/handlers/iteration9_test/시나리오 마이그레이션)
+  §6 Build & Test 게이트 (go test 6 패키지, npm test 66, 빌드)
+사용자 승인 게이트.
+**Context**: Inception 종료 게이트. 다음: U1 Functional Design Patch 작성.
+
+---
+
+## Iteration 9 — Workflow Planning 승인 + U1 Functional Design Patch v1.0 작성
+**Timestamp**: 2026-04-30T01:00:00Z
+**User Input**: "승인"
+**AI Response**: Workflow Planning v1.0 승인 → U1 Functional Design Patch `iteration9-patch.md` v1.0 작성:
+  §2 PendingGameEnd struct + State 필드 + state_clone 깊은 복사
+  §3 defaultFinalResultBufferSeconds = 5 상수
+  §4 evaluateEnd / scheduleGameEnd / firePendingEnd 헬퍼
+  §5 tally.applyElimination: checkEnd → schedule + transitionVoteToNight 생략
+  §6 resolveNight: checkEnd → schedule (Phase=Day 유지)
+  §7 Tick 진입부 PendingGameEnd 만료 분기
+  §8 handleForceEnd: PendingGameEnd 클리어 (race 대비)
+  §9 canPauseState + handleResumeGame deadline shift
+  §10 분기 도식
+  §11 호환성: snapshot/wire/카탈로그/U5 모두 무영향, INTRO 가드는 PendingGameEnd 없을 때만
+  §12 I9-T1~T7 7 케이스 정의
+  §13 영향 파일 표
+사용자 승인 게이트.
+**Context**: U1 Functional Design 게이트.
+
+---
+
+## Iteration 9 — U1 FD Patch 승인 + U1 Code Generation Plan v1.0 작성
+**Timestamp**: 2026-04-30T01:10:00Z
+**User Input**: "승인"
+**AI Response**: U1 Functional Design Patch v1.0 승인 → `construction/plans/iteration9-u1-code-generation-plan.md` v1.0 작성:
+  변경 대상 파일 표 (10건)
+  Step A~I 체크박스 (types/clone/end/tally+resolve/tick/handlers/fixture/iteration9_test/시나리오 마이그레이션)
+  검증 게이트 (vet/test/cover/build)
+  AC 추적 매트릭스
+  Out of Scope 명시 (U2/U3/U4/U5/카탈로그/호스트옵션)
+사용자 승인 게이트.
+**Context**: U1 Code Planning 게이트.
+
+---
+
+## Iteration 9 — U1 Code Gen Plan 승인 + Code Generation Step A~I 실행
+**Timestamp**: 2026-04-30T01:30:00Z
+**User Input**: "승인"
+**AI Response**: U1 Code Generation Plan v1.0 승인 → Step A~I 순차 실행:
+  Step A `types.go` — PendingGameEnd struct + State 필드 + defaultFinalResultBufferSeconds=5
+  Step B `state_clone.go` — 깊은 복사 (Winner ptr 포함)
+  Step C `end.go` — evaluateEnd / scheduleGameEnd / firePendingEnd 헬퍼 추가, checkEnd 는 evaluateEnd→endGame 으로 재구성 (하위 호환)
+  Step D `tally.go` + `resolve_night.go` — checkEnd 분기를 evaluateEnd→scheduleGameEnd 로 치환 (transitionVoteToNight/Phase 변경 생략)
+  Step E `tick.go` — 진입부 Paused/LastTickAt 가드 직후 PendingGameEnd 만료 분기 추가, firePendingEnd 가 prev/LastTickAt 우회
+  Step F `handlers_lifecycle.go` — handlePauseGame 에 PendingGameEnd nil 분기 추가 (phase 무관 허용, INTRO 가드는 pending 없을 때만), handleResumeGame 에 PendingGameEnd.Deadline shift, handleForceEnd 시작 시 PendingGameEnd 클리어
+  Step G `fixtures_test.go` — runPendingEndTick 헬퍼 (Advance + Tick wrap)
+  Step H `iteration9_test.go` 신규 — I9-T1~T7 7 케이스 모두 PASS
+  Step I 마이그레이션 — 후보 검색 결과 회귀 영향 없음 (checkEnd 직접 호출 케이스/ForceEndGame 케이스 모두 보존됨)
+검증:
+  go test ./... -count=1 -race — 6 패키지 PASS
+  go test -cover ./internal/game/ — 92.5
+## Iteration 9 — U1 Code Gen Plan 승인 + Code Generation Step A~I 실행
+**Timestamp**: 2026-04-30T01:30:00Z
+**User Input**: "승인"
+**AI Response**: U1 Code Generation Plan v1.0 승인 → Step A~I 순차 실행:
+  Step A `types.go` — PendingGameEnd struct + State 필드 + defaultFinalResultBufferSeconds=5
+  Step B `state_clone.go` — 깊은 복사 (Winner ptr 포함)
+  Step C `end.go` — evaluateEnd / scheduleGameEnd / firePendingEnd 헬퍼 추가, checkEnd 는 evaluateEnd→endGame 으로 재구성 (하위 호환)
+  Step D `tally.go` + `resolve_night.go` — checkEnd 분기를 evaluateEnd→scheduleGameEnd 로 치환
+  Step E `tick.go` — 진입부 Paused/LastTickAt 가드 직후 PendingGameEnd 만료 분기 추가, firePendingEnd 가 prev/LastTickAt 우회
+  Step F `handlers_lifecycle.go` — handlePauseGame 에 PendingGameEnd nil 분기 추가, handleResumeGame 에 PendingGameEnd.Deadline shift, handleForceEnd 시작 시 PendingGameEnd 클리어
+  Step G `fixtures_test.go` — runPendingEndTick 헬퍼 (Advance + Tick wrap)
+  Step H `iteration9_test.go` 신규 — I9-T1~T7 7 케이스 모두 PASS
+  Step I 마이그레이션 — 회귀 영향 없음 판명 (checkEnd 직접 호출 케이스/ForceEndGame 케이스 모두 보존됨)
+검증:
+  go test ./... -count=1 -race — 6 패키지 PASS
+  go test -cover ./internal/game/ — 92.5% (Iter8 91.8% → +0.7pp)
+  go build -o /tmp/mafia-game-iter9 — 17 MB 성공
+  npm test — 66/66 PASS
+  npm run build — JS gzip 65.62 KB / CSS 3.21 KB (Iter8 baseline 동일)
+plan 모든 체크박스 [x], aidlc-state.md U1 Code Generation [x] 마킹.
+**Context**: U1 Code Generation 종료. 다음: Build and Test 종합 결과 작성.
+
+---
+
+## Iteration 9 — Build & Test 통합 결과 v1.0 작성
+**Timestamp**: 2026-04-30T01:40:00Z
+**User Input**: "승인"
+**AI Response**: `aidlc-docs/construction/build-and-test/iteration9-test-results.md` v1.0 작성:
+  §1 FR-1~FR-8 / NFR-1~NFR-6 / AC-1~AC-6 추적 매트릭스
+  §2 패키지 커버리지 표 (announce 94.3 / game 92.5 +0.7pp / persistence 80.2 / session 87.3 / http 90.3 / ws 82.3)
+  §3 frontend 회귀 (npm 66/66 PASS, gzip 65.62 KB Iter8 baseline 동일)
+  §4 빌드 산출물 (binary 17 MB, JS/CSS/background 동일)
+  §5 회귀 영향 분석 (즉시 종료 경로 보존, Pause/INTRO 가드 보존, Pause/Resume 시퀀스 확장)
+  §6 사용자 체감 흐름표 (T+0 ~ T+5s)
+  §7 NFR 영향 (메모리 ~32 byte/방, CPU/네트워크/운영 무영향)
+  §8 후속 권장 (Chrome DevTools MCP 4 시나리오, 변경 미커밋)
+  §9 DoD 체크리스트 — 사용자 최종 승인 외 모두 [x]
+사용자 최종 승인 게이트.
+**Context**: Iteration 9 종료 직전. 사용자 승인 후 Iteration 9 완전 종료.
+
+---
+
+## Iteration 9 — 사용자 최종 승인 + 종료
+**Timestamp**: 2026-04-30T01:50:00Z
+**User Input**: "승인"
+**AI Response**: Iteration 9 (Fix · 최종 결과 발표 → 승리 화면 전환) 종료. 모든 단위(U1) Functional Design Patch + Code Generation Plan + Code Generation 사용자 승인 완료, Build and Test 결과 v1.0 사용자 최종 승인. aidlc-state.md 의 Iteration 9 Build and Test 체크박스 [x] 마킹 + iteration9-test-results.md DoD '사용자 최종 승인' [x] 처리.
+사용자 체감: VOTE 처형 → 결과 자막 노출 → 5초 → EndScreen 전환. NIGHT 사망 발표 → 5초 → EndScreen 전환. HOST_FORCE_END 즉시 전환 (변경 없음). Pause/Resume 시 deadline shift.
+구현 핵심: State.PendingGameEnd 필드 + defaultFinalResultBufferSeconds=5 + scheduleGameEnd/firePendingEnd helper + Tick 진입부 만료 분기. U2/U3/U4/U5 코드 변경 없음 (서버 emit 시점만 늦어지므로 클라이언트 자동 일치).
+OPERATIONS placeholder — Chrome DevTools MCP 4 시나리오 회귀 사용자 트리거 권장.
+변경 미커밋 — `worktree-fix+final-result` 작업 트리에 모든 변경 보존됨. 사용자 명시적 commit 지시 후 진행 예정.
+**Context**: Iteration 9 완료.
+
+---

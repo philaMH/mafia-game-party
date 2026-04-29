@@ -50,6 +50,14 @@ func (s State) Clone() State {
 		v := *s.EndReason
 		out.EndReason = &v
 	}
+	if s.PendingGameEnd != nil {
+		p := *s.PendingGameEnd
+		if p.Winner != nil {
+			w := *p.Winner
+			p.Winner = &w
+		}
+		out.PendingGameEnd = &p
+	}
 
 	return out
 }
