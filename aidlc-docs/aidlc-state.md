@@ -4,7 +4,7 @@
 - **Project Name**: mafia-game
 - **Project Type**: Greenfield
 - **Start Date**: 2026-04-25T00:00:00Z
-- **Current Stage**: ITERATION 6 — Noir UI 시각 재설계 완료 (2026-04-29). U5 단독 변경, Go 백엔드 무영향. `noir.css` 신설(32 클래스) + 27 view/component 노이르 적용 + `background.jpg` 198 KB 임베드. `npm test` 45 PASS 유지, `npm run build` 성공 (JS gzip 64.93 KB, +3.18 KB), `go build` 성공 (15.2 MB), `go test ./...` 6 패키지 PASS. Build and Test 사용자 승인 대기. (이전 ITERATION 5: Pause/Resume + NightStep 시간 제어 — 사용자 승인 대기 유지)
+- **Current Stage**: ITERATION 7 완료 (사용자 승인 2026-04-29). 호스트 첫 페이지 분리(메인 메뉴 + `/public/settings`) + localStorage 영속(`mafia.options.v1`) + 신규 wire `host:save-options`. 영향 단위 U2/U3/U5 (U1, U4 SKIP). 구현: U2 SaveHostOptions/SavedHostOptions + 검증기, U3 wire dispatch + ValidationErrors 매핑, U5 신규 라우트 + HostHomeView/HostSettingsView + optionsStorage. 회귀: Go 6 패키지 PASS / session 87.3% / ws 82.9% / npm test 60 PASS / build JS gzip 65.62 KB(+0.69 KB). 부수 결함 2건 수정. Operations 단계는 사용자 트리거 대기.
 
 ## Workspace State
 - **Existing Code**: No
@@ -286,4 +286,54 @@
 
 ### 🟡 OPERATIONS
 - [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (노이르 배경 가시성 / role-card 5:7 / vote-tile target / PauseBadge pulse / EndScreen dossier 확인 권장)
+
+---
+
+## Iteration 7 Stage Progress (2026-04-29)
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~6 산출물 보존
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration7-requirements.md` v1.0 (사용자 승인 2026-04-29)
+- [x] User Stories — SKIP (단일 호스트 페르소나, 작은 UX 분리)
+- [ ] Workflow Planning — `construction/plans/iteration7-execution-plan.md` v1.0 (사용자 승인 대기)
+- [ ] Application Design — SKIP (도메인 인터페이스 추가 없음, U5 View 신규 + wire 1건만)
+- [ ] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION (예정 시퀀스: U2 → U3 → U5)
+
+#### U1 Game Core / U4 HTTP Bootstrap
+- [ ] 모든 단계 SKIP (변경 없음)
+
+#### U2 Session/Persistence/Announce
+- [x] Functional Design Patch — `u2-session-persistence-announce/functional-design/iteration7-patch.md` v1.0 (사용자 승인 2026-04-29)
+- [x] NFR Requirements — SKIP
+- [x] NFR Design — SKIP
+- [x] Infrastructure Design — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u2-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29)
+- [x] Code Generation — `internal/session/{session.go(수정), host_options.go(신규), export_test.go(신규), iteration7_test.go(신규)}`. 테스트 6 케이스(T1~T6) PASS, race detector PASS, 패키지 커버리지 87.2% (이전 86.1% → +1.1pp). 사용자 승인 게이트.
+
+#### U3 Realtime Transport
+- [x] Functional Design Patch — `u3-realtime-transport/functional-design/iteration7-patch.md` v1.0 (사용자 승인 2026-04-29)
+- [x] NFR Requirements — SKIP
+- [x] NFR Design — SKIP
+- [x] Infrastructure Design — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u3-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29)
+- [x] Code Generation — `internal/transport/ws/{protocol.go(수정), handlers.go(수정 +errorCodeOf ValidationErrors 매핑), iteration7_test.go(신규)}`. 4 통합 테스트(T1~T4) PASS, 6 패키지 회귀 PASS, ws 커버리지 82.3% (≈ baseline 82.4%). 사용자 승인 게이트.
+
+ℹ️ U2 인터페이스 추가 변경: `SavedHostOptions() (game.Options, bool)` 공개 메서드 추가 (테스트 가시성 확보 + 향후 재접속 복원 protocol 활용 대비). 이전 `export_test.go`는 제거.
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — `u5-web-frontend/functional-design/iteration7-patch.md` v1.0 (사용자 승인 2026-04-29)
+- [x] NFR Requirements — SKIP
+- [x] NFR Design — SKIP
+- [x] Infrastructure Design — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u5-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29)
+- [x] Code Generation — 10 파일 변경 (신규 6: `lib/optionsStorage.{ts,test.ts}`, `views/PublicView/{HostHomeView,HostSettingsView}.{tsx,test.tsx}` / 수정 4: `App.tsx`, `types/wire.ts`, `context/GameContext.tsx`(GameContext export 추가 + hostOptions/saveHostOptions), `views/PublicView/PublicView.tsx`). 부수: PublicView의 host:claim useEffect 가드 강화(remount 시 false-positive ACCESS DENIED 방지). `npm run typecheck` PASS, `npm test` 60 PASS (45→60, 신규 15: 8+3+4), `npm run build` 성공 (JS gzip 65.62 KB / +0.69 KB · CSS 3.21 KB 동일), `go build`/`go test ./...` 6 패키지 PASS. 사용자 승인 게이트.
+
+#### 공통
+- [x] Build and Test — `aidlc-docs/construction/build-and-test/iteration7-test-results.md` 작성. FR-1~FR-6 + NFR-1~NFR-6 + AC-1~AC-8 추적, 패키지별 커버리지(announce 94.0% / game 91.7% / persistence 80.2% / session 87.3% +1.2pp / transport/http 89.8% / transport/ws 82.9% +0.5pp), 회귀 영향 분석, 부수 결함 2건 수정(errorCodeOf ValidationErrors 매핑 / PublicView remount 가드 강화), DoD 체크리스트 완료. `go test ./... -count=1` 6 패키지 PASS, `go build -o /tmp/mafia-game-iter7` 15 MB, `npm test` 60 PASS (45→60, +15), `npm run build` JS gzip 65.62 KB / +0.69 KB. 사용자 승인 게이트.
+
+### 🟡 OPERATIONS
+- [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (메인 메뉴 → 설정 라우팅 / localStorage 영속 / host:save-options 송수신 확인 권장)
 

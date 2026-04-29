@@ -1257,3 +1257,170 @@ Q7. B"
 **Context**: Iteration 6 완료. 워크스페이스 상태 갱신 완료.
 
 ---
+
+## Iteration 7 — 초기 사용자 요청 (Intake)
+**Timestamp**: 2026-04-29T17:55:00Z
+**User Input**: "호스트 화면의 첫 페이지를 만듭니다.
+첫 페이지에서는 다음과 같은 메뉴가 준비되어 있습니다.
+1. 게임 시작 (방이 개설됨)
+2. 설정 (마피아 수, 플레이어 수 등의 게임 설정을 할 수 있습니다."
+**AI Response**: AI-DLC 워크플로우 진입. Welcome 메시지 출력 + 작업 4건 생성(Workspace Detection / Requirements Analysis / Workflow Planning / Construction). Workspace Detection 시작.
+**Context**: Iteration 7 시작. 호스트 메인(첫) 페이지 신설 — 메뉴 2개(게임 시작 / 설정). 현재 동작은 호스트가 `/public` 진입 시 즉시 LOBBY가 열려있는 구조이므로 진입점 분리가 필요. 메인 페이지 → "게임 시작"이 LOBBY 개방 트리거가 되고, "설정"이 Options(마피아·시민 수, NightStep 시간 등)을 사전 조정.
+
+---
+
+## Iteration 7 — Workspace Detection
+**Timestamp**: 2026-04-29T17:56:00Z
+**User Input**: (자동 단계 — 사용자 입력 없음)
+**AI Response**: aidlc-docs/aidlc-state.md 존재 → Brownfield 재개. 기존 5단위(U1~U5) 구조 + Iteration 1~6 산출물 보존. Reverse Engineering SKIP (직전 Iteration 산출물 활용). 다음 단계: Requirements Analysis.
+**Context**: Project Type=Brownfield, Workspace Root=/Users/myunghoonkang/study/saltware-ai-dlc/mafia-game. 영향 영역 1차 추정: U5(Web Frontend) 신규 라우트/뷰 추가가 핵심, U1(Game Core) Options 조정용 액션 추가 가능, U2/U3 announce/wire 보강 가능, U4 변경 없음.
+
+---
+
+## Iteration 7 — Requirements Analysis Intake (질문 작성)
+**Timestamp**: 2026-04-29T17:58:00Z
+**User Input**: (자동 단계 — 사용자 입력 없음)
+**AI Response**: `aidlc-docs/inception/requirements/iteration7-intake-questions.md` 8문항 작성. 현 PublicView 단일 화면 구조 분석 후, 메인 메뉴 분리/설정 노출 범위/저장 방식/세션 영속성/권장 가이드/백엔드 영향 등을 명확화하는 객관식(A~E + Other) 질문 구성. 사용자 답변 대기.
+**Context**: 사용자가 [Answer]: 태그를 채우면 ambiguity 검사 후 `iteration7-requirements.md` 작성 → 사용자 승인 게이트.
+
+---
+
+## Iteration 7 — Intake 답변 수신 + Requirements 문서 작성
+**Timestamp**: 2026-04-29T18:05:00Z
+**User Input**: "완료" (intake 8문항 답변 = Q1=A, Q2=C, Q3=B, Q4=A, Q5=B, Q6=A, Q7=A, Q8=C)
+**AI Response**: 답변 8건 수신. contradiction/ambiguity 검사 결과:
+- Q1(즉시 송신) ↔ Q4(명시적 저장): 일관(저장 후 메인의 게임 시작이 그 값 사용).
+- Q5(localStorage) ↔ Q4: 일관(저장 시점에 localStorage 기록).
+- Q5+Q8 (클라이언트 + 서버 양쪽 영속): 모순 아님, source-of-truth 우선순위는 design 단계 implementation detail로 분류 + requirements §FR-3 에 클라이언트 우선 명시.
+`aidlc-docs/inception/requirements/iteration7-requirements.md` v1.0 작성 — FR 6건 + NFR 6건 + 영향 단위 매핑(U1-, U2 보통, U3 보통, U4 변경 없음, U5 큼) + AC 8건 + Out of Scope + R-1/R-2 리스크 노트. 사용자 승인 게이트.
+**Context**: 사용자 승인 시 Workflow Planning 단계로 진행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — Requirements 사용자 승인
+**Timestamp**: 2026-04-29T18:10:00Z
+**User Input**: "승인"
+**AI Response**: Requirements v1.0 확정. Workflow Planning 단계 진입. `aidlc-docs/construction/plans/iteration7-execution-plan.md` v1.0 작성 — 변환 범위(UI 진입점 분리 + wire 1건 추가), 영향 분석, 컴포넌트 관계, 단계 결정(INCEPTION 후속 SKIP / U1·U4 SKIP / U2·U3·U5 EXECUTE), 패키지 시퀀스(U2 → U3 → U5 → BT), Mermaid 워크플로우, 위험 평가(Low), 산출물·품질 게이트, 성공 기준 포함. aidlc-state.md Iteration 7 섹션 추가 + Current Stage 갱신. 사용자 승인 게이트.
+**Context**: 사용자 승인 시 U2 Functional Design Patch부터 Construction 시퀀스 진행. "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — Workflow Planning 사용자 승인
+**Timestamp**: 2026-04-29T18:15:00Z
+**User Input**: "승인"
+**AI Response**: Execution Plan v1.0 확정. Construction 단계 진입(시퀀스 U2 → U3 → U5 → BT). U2 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u2-session-persistence-announce/functional-design/iteration7-patch.md`) — `SaveHostOptions` 메서드 신설, `session` 구조체 `savedHostOptions/hasSavedHostOptions` 필드 추가, `validateSavedHostOptions` shape-only 검사기, 테스트 6 케이스(I7-U2-T1~T6). 사용자 승인 게이트(2-옵션 메시지).
+**Context**: 사용자 "Continue to Next Stage" 시 U2 Code Generation, "Request Changes" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U2 Functional Design 사용자 승인
+**Timestamp**: 2026-04-29T18:18:00Z
+**User Input**: "continue"
+**AI Response**: U2 FD v1.0 확정. Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u2-code-generation-plan.md`) — Step A(인터페이스/구조체) → B(host_options.go 신규) → C(iteration7_test.go 6 케이스) → D(go vet/test/race) → E(audit/checklist). 변경 파일 3건 예상. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — Build and Test 사용자 승인 (Iteration 7 종료)
+**Timestamp**: 2026-04-29T19:24:00Z
+**User Input**: "승인"
+**AI Response**: Iteration 7 Build and Test v1.0 결과 확정. Iteration 7 종료. aidlc-state.md Current Stage 갱신("ITERATION 7 완료"). Operations 단계(Chrome DevTools MCP 다중 컨텍스트 회귀: /public ↔ /public/settings 왕복 / localStorage 영속 / host:save-options 왕복)는 사용자 트리거 대기. 다음 이터레이션 후속 권장: 호스트 재접속 시 서버 측 옵션 자동 노출 protocol(host:claim ack 옵션 인클루드), `validateOptions` ↔ `validateSavedHostOptions` 통합 검토.
+**Context**: Iteration 7 완료. 산출물 경로 정리:
+- inception/requirements/iteration7-{intake-questions,requirements}.md
+- construction/plans/iteration7-{execution,u2-code-generation,u3-code-generation,u5-code-generation}-plan.md
+- construction/u2-session-persistence-announce/functional-design/iteration7-patch.md
+- construction/u3-realtime-transport/functional-design/iteration7-patch.md
+- construction/u5-web-frontend/functional-design/iteration7-patch.md
+- construction/build-and-test/iteration7-test-results.md
+코드 변경: 18 파일 (Go 4 + Web 12 + 기타 사용자 인지 가능 변경 2)
+
+---
+
+## Iteration 7 — U5 Code Generation 사용자 승인 + Build and Test 작성
+**Timestamp**: 2026-04-29T19:18:00Z
+**User Input**: "continue"
+**AI Response**: U5 Code Generation v1.0 결과 확정. 공통 Build and Test 단계 진입. `aidlc-docs/construction/build-and-test/iteration7-test-results.md` v1.0 작성 — 빌드 결과(Go/Web), 단위·통합 테스트 결과(Go 6 PASS, vitest 60 PASS), 요구사항 추적 매트릭스(FR-1~FR-6 / NFR-1~NFR-6 / AC-1~AC-8), 회귀 영향 분석(U1/U4 무영향, U2/U3/U5 변경 범위), 부수 결함 2건 수정 명시(errorCodeOf ValidationErrors / PublicView remount 가드), NFR 영향, DoD 체크리스트, Operations 후속 권장(Chrome DevTools MCP 회귀 / host:claim ack 옵션 노출 / validateOptions 통합 검토). aidlc-state.md Build and Test 항목 [x] + Current Stage 갱신. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 Iteration 7 종료, "수정" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U5 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T19:08:00Z
+**User Input**: "승인"
+**AI Response**: U5 Code Generation Plan v1.0 확정 → Step A~J 순차 실행:
+- Step A: 신규 `web/src/lib/optionsStorage.ts` — load/save/clear, 키 `mafia.options.v1`, safeLocalStorage + isPlainOptions 스키마 검사 + 페일백.
+- Step B: `web/src/types/wire.ts` — OutgoingMsg에 `host:save-options` variant 추가.
+- Step C: `web/src/context/GameContext.tsx` — `hostOptions/saveHostOptions` 노출, `useState<Options>(loadSavedOptions() ?? defaultOptions(8))` 초기화. `GameContext` export 추가(테스트 가시성).
+- Step D: 신규 `web/src/views/PublicView/HostHomeView.tsx` — 노이르 타이틀 + "♠ 게임 시작"/"⚙ 설정" 두 버튼.
+- Step E: 신규 `web/src/views/PublicView/HostSettingsView.tsx` — 9 필드 폼(숫자 7 + 체크박스 2) + 권장값 경고 + 비-호스트 가드 + "저장 후 메인으로" 단일 버튼.
+- Step F: `web/src/App.tsx` — `/public/settings` 라우트 추가.
+- Step G: `web/src/views/PublicView/PublicView.tsx` — 인라인 폼 제거, `<HostHomeView />`로 교체. 부수: host:claim useEffect 가드 강화(`!ctx.hostToken && !ctx.hostOccupied` 조건 추가) — remount 시 false-positive ACCESS DENIED 방지.
+- Step H: 신규 테스트 3 파일 — `optionsStorage.test.ts`(8) / `HostHomeView.test.tsx`(3) / `HostSettingsView.test.tsx`(4). 총 신규 15.
+- Step I: `npm install` 후 `npm run typecheck` PASS, `npm test` 60 PASS (45 baseline → 60, +15 신규), `npm run build` PASS (JS gzip 65.62 KB / +0.69 KB · CSS 3.21 KB · 예산 +3 KB 이내). `go test ./... -count=1` 6 패키지 PASS, `go build -o /tmp/mafia-game-iter7` 15 MB.
+- Step J: plan 21개 체크박스 모두 [x]. aidlc-state.md U5 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 Build and Test 단계, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U5 Functional Design 승인 + U5 Code Gen Plan 작성
+**Timestamp**: 2026-04-29T19:00:00Z
+**User Input**: "continue"
+**AI Response**: U5 FD v1.0 확정. U5 Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u5-code-generation-plan.md`) — Step A(optionsStorage 모듈) → B(OutgoingMsg variant) → C(GameContext 확장) → D(HostHomeView) → E(HostSettingsView) → F(App 라우트) → G(PublicView 분기 정리) → H(단위 테스트 7 케이스) → I(typecheck/test/build) → J(audit/state). 변경 파일 10건(신규 6 + 수정 4). 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U3 Code Generation 사용자 승인 + U5 FD 작성
+**Timestamp**: 2026-04-29T18:54:00Z
+**User Input**: "continue"
+**AI Response**: U3 Code Generation v1.0 결과 확정. U5 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u5-web-frontend/functional-design/iteration7-patch.md`) — 신규 라우트 `/public/settings`, 신규 모듈 `lib/optionsStorage.ts`(키 `mafia.options.v1`), GameContext에 `hostOptions/saveHostOptions` 노출, OutgoingMsg에 `host:save-options` variant 추가, 신규 컴포넌트 HostHomeView + HostSettingsView, PublicView 인라인 폼 제거. 영향 파일 10건(신규 6 + 수정 4) + 테스트 7 케이스(I7-U5-T1~T7). 사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U5 Code Generation Plan, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U3 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T18:46:00Z
+**User Input**: "승인"
+**AI Response**: U3 Code Generation Plan v1.0 확정 → Step A~E 순차 실행:
+- Step A: `protocol.go` — `TypeHostSaveOptions = "host:save-options"` + `hostSaveOptionsPayload` struct 추가.
+- Step B: `handlers.go` — `handleIncoming` switch case 1건 추가(`mgr.SaveHostOptions(ctx, c.HostToken, p.Options)` 위임).
+- Step C: 신규 `iteration7_test.go` — 4 통합 테스트(HappyPath / NonHost / Validation / BadJSON). 비동기 dispatch 동기화 위한 `waitForSavedHostOptions` 헬퍼 추가.
+- (부수 변경) `errorCodeOf`에 `game.ValidationErrors` 매핑 추가 — 기존 코드는 EngineError만 인식하여 ValidationErrors가 INTERNAL로 잘못 노출되던 latent 결함을 해결.
+- (U2 후속 변경) `SessionManager.SavedHostOptions() (game.Options, bool)` 공개 메서드 추가 — 외부 패키지(ws_test)에서 테스트 검증 가능 + 향후 재접속 복원 protocol 활용. `export_test.go` 제거, `iteration7_test.go(session)` 도 공개 메서드 사용으로 갱신.
+- Step D: `go vet ./...` PASS, `go test ./internal/session/... ./internal/transport/ws/... -run Iter7|Iteration7|SaveHostOptions -race` PASS, 전체 6 패키지 회귀 PASS, ws 커버리지 82.3% (≈ baseline 82.4%).
+- Step E: plan 14개 체크박스 모두 [x]. aidlc-state.md U3 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U5 Functional Design Patch, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U3 Functional Design 사용자 승인 + U3 Code Gen Plan 작성
+**Timestamp**: 2026-04-29T18:38:00Z
+**User Input**: "continue"
+**AI Response**: U3 FD v1.0 확정. U3 Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u3-code-generation-plan.md`) — Step A(protocol.go 상수+payload struct) → B(handlers.go switch case) → C(iteration7_test.go 4 통합 테스트) → D(go vet/test/race/회귀) → E(audit/checklist/state). 변경 파일 3건 예상. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U2 Code Generation 사용자 승인 + U3 FD 진입
+**Timestamp**: 2026-04-29T18:32:00Z
+**User Input**: "continue"
+**AI Response**: U2 Code Generation v1.0 결과 확정. U3 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u3-realtime-transport/functional-design/iteration7-patch.md`) — incoming wire `host:save-options` 정의(TypeHostSaveOptions 상수 + hostSaveOptionsPayload struct), `handleIncoming` switch case 1건 추가, broadcast/dispatch 부수효과 없음, outgoing 응답 없음(에러 시 기존 error 프레임 재사용). 테스트 4 케이스(I7-U3-T1~T4) 계획. 사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U3 Code Generation Plan, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U2 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T18:24:00Z
+**User Input**: "승인"
+**AI Response**: U2 Code Generation Plan v1.0 확정 → Step A~E 순차 실행:
+- Step A: `internal/session/session.go` — `SessionManager` 인터페이스에 `SaveHostOptions(ctx, token, opts) error` 추가, `session` 구조체에 `savedHostOptions/hasSavedHostOptions` 필드 추가.
+- Step B: 신규 `internal/session/host_options.go` — `SaveHostOptions` 구현(host token verify + shape validation + locked update) + `validateSavedHostOptions` shape-only 검사기(MaxPlayers/MafiaCount/IntroSec/DiscussionSec/Night*Seconds 8 항목).
+- Step C: 신규 `internal/session/export_test.go` (테스트 전용 `SavedHostOptionsForTest` getter) + `internal/session/iteration7_test.go` (6 케이스: NoHostToken / BadToken / ValidationFailure / PersistsAcrossSessionReset / OverwriteLatest / ConcurrentSafe).
+- Step D: `go vet ./internal/session/...` PASS, `go test ./internal/session/... -count=1 -race` PASS, 전체 `go test ./...` 6 패키지 PASS, 세션 패키지 커버리지 87.2% (baseline 86.1% → +1.1pp).
+- Step E: plan 17개 체크박스 모두 [x]. aidlc-state.md U2 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U3 Functional Design Patch, "Request Changes" 시 v1.1 보정.
+
+---
