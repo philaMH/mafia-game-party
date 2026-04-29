@@ -76,7 +76,9 @@ func TestTick_DayDiscussionDeadlineTransitions(t *testing.T) {
 	if e.Snapshot().Phase != PhaseDay {
 		t.Fatalf("expected DAY after EndNightEarly")
 	}
-	clock.Advance(180 * time.Second)
+	// Iteration 8: Day 2+ deadline includes a 5s announcement buffer ahead
+	// of the configured DiscussionSeconds.
+	clock.Advance(time.Duration(defaultDayIntroSeconds+180) * time.Second)
 	state, _, err := e.Tick(clock.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -93,8 +95,9 @@ func TestTick_DiscussionTimerThresholds(t *testing.T) {
 	if _, _, err := e.Apply(EndNightEarly{HostID: "p1"}); err != nil {
 		t.Fatal(err)
 	}
-	// 30s remaining.
-	clock.Advance(150 * time.Second)
+	// 30s remaining of the 180s discussion = 150s of discussion elapsed,
+	// plus the leading 5s announcement buffer (Iteration 8).
+	clock.Advance(time.Duration(defaultDayIntroSeconds+150) * time.Second)
 	_, evs, err := e.Tick(clock.Now())
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import { TimerBar } from "./TimerBar";
 import { VoiceToggle } from "./VoiceToggle";
 
 const NIGHT_STEP_LABEL: Record<string, string> = {
+  INTRO: "밤이 시작됩니다",
   MAFIA: "마피아의 시간",
   POLICE: "경찰의 시간",
   DOCTOR: "의사의 시간",

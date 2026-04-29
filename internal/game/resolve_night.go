@@ -4,12 +4,16 @@ import "time"
 
 // enterNight is called whenever the engine transitions into PhaseNight
 // (from VOTE / RECOUNT). It clears per-night accumulators, sets NightStep
-// to MAFIA, and emits PhaseChanged{NIGHT} followed by NightStepChanged{MAFIA}
-// with a deadline derived from Settings.NightMafiaSeconds.
+// to INTRO, and emits PhaseChanged{NIGHT} followed by NightStepChanged{INTRO}
+// with a 5s deadline. Tick advances INTRO -> MAFIA when the buffer expires.
 //
 // Iteration 5: dead-role steps are NO LONGER auto-skipped. Each step is
 // held for its configured duration so role deaths cannot leak through
 // abnormally fast transitions (R1).
+//
+// Iteration 8: the new INTRO step gives the host's `phase.night` cue time
+// to finish before mafia time begins. Catalog renders INTRO as silent so
+// only the existing `phase.night` cue is heard.
 func (e *engine) enterNight() []EventEnvelope {
 	now := e.clock.Now()
 	e.state.Phase = PhaseNight
@@ -26,7 +30,7 @@ func (e *engine) enterNight() []EventEnvelope {
 	e.state.LastTickAt = now
 
 	events := []EventEnvelope{pub(PhaseChanged{Phase: PhaseNight, Day: e.state.Day})}
-	events = append(events, e.beginNightStep(NightStepMafia, now)...)
+	events = append(events, e.beginNightStep(NightStepIntro, now)...)
 	return events
 }
 
@@ -47,10 +51,12 @@ func (e *engine) beginNightStep(step NightStep, startedAt time.Time) []EventEnve
 	})}
 }
 
-// nextNightStep returns the successor in the MAFIA -> POLICE -> DOCTOR ->
-// RESOLVED chain. RESOLVED is terminal.
+// nextNightStep returns the successor in the INTRO -> MAFIA -> POLICE ->
+// DOCTOR -> RESOLVED chain. RESOLVED is terminal.
 func nextNightStep(s NightStep) NightStep {
 	switch s {
+	case NightStepIntro:
+		return NightStepMafia
 	case NightStepMafia:
 		return NightStepPolice
 	case NightStepPolice:
@@ -68,9 +74,14 @@ func nextNightStep(s NightStep) NightStep {
 // Order:
 //  1. Determine victim (mafia kill, possibly nullified by doctor protect).
 //  2. Reset night accumulators.
-//  3. Increment Day, set Phase = DAY, set Deadline = now + DiscussionSeconds,
-//     emit PhaseChanged{DAY} **first** so the host announces the morning
-//     before the victim/peaceful-night line.
+//  3. Increment Day, set Phase = DAY, set Deadline = now +
+//     defaultDayIntroSeconds + DiscussionSeconds, emit PhaseChanged{DAY}
+//     **first** so the host announces the morning before the
+//     victim/peaceful-night line. Iteration 8: the leading 5s buffer
+//     (defaultDayIntroSeconds) gives the death/peaceful cue room to play
+//     before discussion time effectively begins. transitionIntroToDay
+//     (Day 1) skips the buffer because no DeathAnnounced/PeacefulNight is
+//     emitted.
 //  4. Emit DeathAnnounced (and potential MafiaRepresentativeReassigned) or
 //     PeacefulNight as the previous-night summary.
 //  5. Check end conditions; emit GameEnded and switch to PhaseEnd if met.
@@ -111,7 +122,9 @@ func (e *engine) resolveNight() ([]EventEnvelope, error) {
 
 	e.state.Day++
 	e.state.Phase = PhaseDay
-	e.state.Deadline = now.Add(time.Duration(e.state.Settings.DiscussionSeconds) * time.Second)
+	e.state.Deadline = now.Add(time.Duration(
+		defaultDayIntroSeconds+e.state.Settings.DiscussionSeconds,
+	) * time.Second)
 	e.state.LastTickAt = now
 	events = append(events, pub(PhaseChanged{
 		Phase:    PhaseDay,

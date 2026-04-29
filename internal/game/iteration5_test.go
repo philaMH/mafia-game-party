@@ -301,7 +301,11 @@ func TestI5_DefaultOptionsHasNightSeconds(t *testing.T) {
 }
 
 // I5-T13 — Custom Options values flow through to enterNight's deadline
-// computation.
+// computation. Iteration 8: NIGHT now starts in INTRO, so the MAFIA
+// deadline is computed as introDeadline + NightMafiaSeconds. advanceToNight
+// drains the INTRO buffer; the resulting MAFIA deadline must therefore
+// equal LastTickAt + NightMafiaSeconds minus the 1ms helper slop used to
+// cross the INTRO boundary.
 func TestI5_CustomNightSecondsRespected(t *testing.T) {
 	e, _ := newTestEngine(t, 5023)
 	opts := DefaultOptions(8)
@@ -313,8 +317,9 @@ func TestI5_CustomNightSecondsRespected(t *testing.T) {
 		t.Fatal(err)
 	}
 	state = advanceToNight(t, e)
-	enterAt := state.LastTickAt
-	if got := state.NightStepDeadline.Sub(enterAt); got != 45*time.Second {
-		t.Errorf("MAFIA deadline gap=%v, want 45s", got)
+	got := state.NightStepDeadline.Sub(state.LastTickAt)
+	want := 45*time.Second - time.Millisecond
+	if got != want {
+		t.Errorf("MAFIA deadline gap=%v, want %v", got, want)
 	}
 }

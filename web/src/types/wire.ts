@@ -6,7 +6,7 @@ export type PlayerID = string;
 export type Role = "MAFIA" | "CITIZEN" | "DOCTOR" | "POLICE";
 export type Team = "MAFIA" | "CITIZEN";
 export type Phase = "LOBBY" | "INTRO" | "NIGHT" | "DAY" | "VOTE" | "RECOUNT" | "END";
-export type NightStep = "MAFIA" | "POLICE" | "DOCTOR" | "RESOLVED";
+export type NightStep = "INTRO" | "MAFIA" | "POLICE" | "DOCTOR" | "RESOLVED";
 export type EndReason = "MAFIA_WIN" | "CITIZEN_WIN" | "HOST_FORCE_END";
 
 export interface PoliceCheckRecord {

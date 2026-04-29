@@ -125,6 +125,23 @@ func TestBuildEventPayload_NightStepCarriesStep(t *testing.T) {
 	}
 }
 
+// Iteration 8 — INTRO step is passed through as a string just like the
+// other steps. The wire treats NightStep as opaque enum; clients gate on
+// the literal value.
+func TestBuildEventPayload_NightStepIntroSerializes(t *testing.T) {
+	p := buildEventPayload(game.NightStepChanged{Step: game.NightStepIntro, Day: 1})
+	if p.Step != game.NightStepIntro {
+		t.Errorf("Step = %q, want INTRO", p.Step)
+	}
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(bytes), `"step":"INTRO"`) {
+		t.Errorf("wire payload missing step=INTRO: %s", string(bytes))
+	}
+}
+
 func TestMustMarshal_RoundTrip(t *testing.T) {
 	msg := errorMsg{Type: "error", Code: "VALIDATION_ERROR", Message: "bad"}
 	bytes := mustMarshal(msg)

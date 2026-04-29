@@ -149,6 +149,10 @@ func (e *engine) handlePauseGame(a PauseGame) (State, []EventEnvelope, error) {
 		return e.state.Clone(), nil, errf(CodeWrongPhase,
 			"cannot pause during phase %s", e.state.Phase)
 	}
+	if e.state.Phase == PhaseNight && e.state.NightStep == NightStepIntro {
+		return e.state.Clone(), nil, errf(CodeWrongPhase,
+			"cannot pause during night intro")
+	}
 	if e.state.Paused {
 		return e.state.Clone(), nil, nil
 	}

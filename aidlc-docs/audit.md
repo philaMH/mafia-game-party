@@ -1604,3 +1604,189 @@ main 에는 PR#2 (`worktree-feature+main-page` Sub-feature B) 가 같은 Iterati
 **Context**: 충돌 해결 진행 중.
 
 ---
+
+# =============================================================================
+# Iteration 8 — Fix · 밤 진입 안내 (worktree-fix+vote-result)
+# =============================================================================
+
+## Iteration 8 — Initial User Defect Report
+**Timestamp**: 2026-04-29T21:10:00Z
+**User Input**: "낮에 투표가 진행된 후 밤으로 넘어갈 때 바로 마피아의 시간이 시작되기 때문에 플레이어들이 안내를 받고 밤을 준비하는 동안 마피아의 시간이 촉박합니다. 플레이어들에게 밤이 되었음을 안내한 뒤 마피아의 시간을 시작하고 싶습니다."
+**AI Response**: 진단 — `internal/game/resolve_night.go::enterNight()` 가 `PhaseChanged{NIGHT}` + `beginNightStep(MAFIA, now)` 를 같은 사이클에서 emit, 클라이언트는 두 cue (`phase.night`, `night.mafia`) 를 FIFO 재생하지만 마피아 NightStepDeadline 은 `beginNightStep` 호출 시각에 즉시 시작되어 안내 음성 재생 시간이 마피아 시간을 잠식. 동일 패턴이 NIGHT→DAY 전이에서도 잠재 (resolveNight() 가 PhaseChanged{DAY} + DeathAnnounced 를 함께 emit, DiscussionSeconds 가 즉시 가동). Iteration 8 (Fix) 로 진행. AI-DLC 워크플로우 표준대로 Workspace Detection → Reverse Engineering SKIP → Requirements Analysis 명확화 질문 6건 (Q1~Q6) 제시.
+**Context**: Brownfield 8번째 iteration 진입. 영향 단위 1차 추정: U1 (game core) + U2 (announce catalog) + U3 (wire serialize) + U5 (web reducer/UI label).
+
+---
+
+## Iteration 8 — Requirements Analysis 명확화 답변 수신
+**Timestamp**: 2026-04-29T21:15:00Z
+**User Input**: "Q1=A, Q2=A, Q3=B, Q4=B Q5=A Q6=B"
+**AI Response**: 결정사항 확정:
+- **Q1=A**: 신규 `NightStep = INTRO` enum 추가, `INTRO → MAFIA → POLICE → DOCTOR → RESOLVED` 순서. `enterNight()` 가 `beginNightStep(NightStepIntro, now)` 호출. `nextNightStep(NightStepIntro) = NightStepMafia`. Tick 이 만료 시 자동 MAFIA 진입.
+- **Q2=A**: 기본 5초. `defaultNightIntroSeconds = 5`.
+- **Q3=B**: `Options` 노출 없음, 도메인 상수만. `nightStepSeconds(opts, NightStepIntro)` 가 항상 `defaultNightIntroSeconds` 반환 (Options 필드 없음).
+- **Q4=B**: 신규 mp3 cue 발주 없음. `NightStepChanged{NightStepIntro}` 카탈로그는 빈 `Announcement{}` 반환 (기존 `phase.night` 가 안내 담당).
+- **Q5=A**: NIGHT→DAY 도 동일 처리. `resolveNight()` 가 설정하는 `Deadline = now + (defaultDayIntroSeconds + DiscussionSeconds) * Second`. `defaultDayIntroSeconds = 5`. 첫째날(`transitionIntroToDay`) 은 DeathAnnounced 가 없으므로 기존 그대로(버퍼 없음).
+- **Q6=B**: INTRO step 은 Pause 불가. `canPause` 보강 필요 (PhaseNight + NightStep == NightStepIntro 인 경우 false).
+
+다음 단계: `aidlc-docs/inception/requirements/iteration8-fix-vote-result-requirements.md` v1.0 작성 + 사용자 승인 게이트 후 Workflow Planning.
+**Context**: 결정사항 6건 모두 확정. Extension Configuration 변경 없음 (Security Baseline 여전히 No).
+
+---
+
+## Iteration 8 — Requirements v1.0 사용자 승인 + Workflow Planning 진입
+**Timestamp**: 2026-04-29T21:25:00Z
+**User Input**: "승인"
+**AI Response**: Requirements v1.0 (`iteration8-fix-vote-result-requirements.md`) 확정. aidlc-state.md 의 Iteration 8 RA 체크박스 [x] 마킹. Workflow Planning 단계 진입 — `aidlc-docs/construction/plans/iteration8-execution-plan.md` 작성 (Phase A: U1 FD+CG / Phase B: U2 FD+CG / Phase C: U3 검증만 / Phase D: U5 FD+CG / Phase E: Build & Test). User Stories / Application Design / Units Generation / NFR / Infrastructure 단계는 SKIP. 사용자 승인 게이트 후 Phase A 진입.
+**Context**: Iteration 8 의 INCEPTION 단계 RA 종료, Workflow Planning 진입.
+
+---
+
+## Iteration 8 — Workflow Plan v1.0 사용자 승인 + Phase A (U1 FD) 진입
+**Timestamp**: 2026-04-29T21:35:00Z
+**User Input**: "A"
+**AI Response**: `iteration8-execution-plan.md` v1.0 확정. aidlc-state.md 의 Workflow Planning 체크박스 [x] 마킹. CONSTRUCTION 진입 — Phase A (U1 Game Core) Functional Design Patch 작성 시작. 영향 코드 4건 (`internal/game/{types,resolve_night,handlers_lifecycle}.go` + 신규 `iteration8_test.go`) + 헬퍼 회귀 보정 다수 예상. NightStep enum/도메인 상수/transition/Pause 가드를 patch 형식으로 명세 (Iteration 4/5 patch 양식 준수).
+**Context**: Workflow Planning 종료, CONSTRUCTION Phase A 진입.
+
+---
+
+## Iteration 8 — Phase A.1 (U1 FD) 사용자 승인 + Code Gen Plan 작성
+**Timestamp**: 2026-04-29T21:50:00Z
+**User Input**: "승인"
+**AI Response**: U1 FD patch v1.0 (`u1-game-core/functional-design/iteration8-patch.md`) 확정. NightStep enum 1건, 도메인 상수 2건, `nightStepSeconds`/`enterNight`/`nextNightStep`/`resolveNight`/`handlePauseGame` 분기, `advanceToNight` 헬퍼 자동 진행. 다음: `aidlc-docs/construction/plans/iteration8-u1-code-generation-plan.md` 작성 (Step A~F 체크리스트), 사용자 승인 후 코드 생성 Part 2.
+**Context**: Phase A.1 종료, Phase A.2 진입 (Code Generation Plan).
+
+---
+
+## Iteration 8 — Phase A.2 (U1 Code Gen) 사용자 승인 + Step A~F 실행
+**Timestamp**: 2026-04-29T22:00:00Z
+**User Input**: "A)"
+**AI Response**: U1 Code Generation Plan v1.0 확정 → Step A~F 순차 실행:
+- Step A — `internal/game/types.go`: `NightStepIntro` 상수 추가, `defaultNightIntroSeconds=5` / `defaultDayIntroSeconds=5` 도메인 상수 신설, `nightStepSeconds` switch 에 INTRO 케이스 (Options 무시).
+- Step B — `internal/game/resolve_night.go`: `enterNight()` 시작 step `MAFIA → INTRO`, `nextNightStep` 에 `INTRO → MAFIA` 케이스, `resolveNight()` Day Deadline = `now + (defaultDayIntroSeconds + DiscussionSeconds) * Second`. docstring 갱신.
+- Step C — `internal/game/handlers_lifecycle.go::handlePauseGame`: PhaseNight + NightStepIntro 인 경우 `errf(CodeWrongPhase, "cannot pause during night intro")` 거부 분기 추가.
+- Step D — `internal/game/fixtures_test.go` 에 `engineFakeClock` + `drainNightIntro` 헬퍼 신설, `internal/game/handlers_night_test.go::advanceToNight` 가 INTRO 진입 시 자동 드레인 후 MAFIA 까지 진행. NIGHT 2+ 진입 케이스(`iteration4_test.go::TestI4_PoliceHistory_AccumulatesAcrossNights`) 에는 명시적 `drainNightIntro` 호출 추가.
+- Step E — 신규 `internal/game/iteration8_test.go`: I8-T1~T7 (7 테스트) — 진입 INTRO/Deadline, INTRO→MAFIA 자동 전이, nightStepSeconds INTRO 고정, resolveNight Day 버퍼 5+180s, 첫째날 transitionIntroToDay 버퍼 없음, INTRO 단계 Pause 거부, legacy NightStep=MAFIA 스냅샷 호환.
+- 회귀 보정: `resolve_night_test.go::TestResolveNight_DiscussionDeadlineSet`, `tick_test.go::TestTick_DayDiscussionDeadlineTransitions` / `TestTick_DiscussionTimerThresholds`, `iteration5_test.go::TestI5_CustomNightSecondsRespected` — Day Deadline 5s 버퍼 반영 + MAFIA gap 1ms 슬롭 명시.
+- Step F — `go vet ./...` PASS, `go test ./internal/game/... -count=1 -race` PASS, `go test ./... -count=1` 6 패키지 PASS, `go build -o /tmp/mafia-game-iter8 ./cmd/mafia-game` 성공 (17.97 MB), 커버리지 game 91.8% (이전 91.7% → +0.1pp).
+모든 plan 체크박스 [x]. aidlc-state.md U1 섹션 [x] 마킹.
+**Context**: Phase A 종료. 다음: Phase B (U2 Session/Announce — catalog NightStepChanged{INTRO} silent 분기).
+
+---
+
+## Iteration 8 — Phase A 사용자 승인 + Phase B (U2 FD) 진입
+**Timestamp**: 2026-04-29T22:10:00Z
+**User Input**: "A"
+**AI Response**: Phase A (U1) 종료 사용자 승인. Phase B 진입 — U2 Session/Announce Functional Design Patch v1.0 작성 시작 (`u2-session-persistence-announce/functional-design/iteration8-patch.md`). 변경 매우 제한적 — `internal/announce/catalog_default.go` 의 `NightStepChanged` switch 에 `NightStepIntro` 케이스 1건 추가, `return Announcement{}` (silent). `catalog_test.go` 매트릭스에 INTRO 행 추가 + I8-A1 검증 1건. 사용자 승인 게이트(2-옵션).
+**Context**: Phase B.1 진입.
+
+---
+
+## Iteration 8 — Phase B.1 (U2 FD) 사용자 승인 + Code Gen Plan 작성
+**Timestamp**: 2026-04-29T22:15:00Z
+**User Input**: "A"
+**AI Response**: U2 FD patch v1.0 확정. `aidlc-docs/construction/plans/iteration8-u2-code-generation-plan.md` 작성 (Step A~C). 영향 파일 2건: `catalog_default.go` (1 분기 추가) + `catalog_test.go` (1 단언 추가). 사용자 승인 게이트.
+**Context**: Phase B.2 진입 (Code Generation Plan).
+
+---
+
+## Iteration 8 — Phase B.2 (U2 Code Gen) 사용자 승인 + Step A~C 실행
+**Timestamp**: 2026-04-29T22:25:00Z
+**User Input**: "A"
+**AI Response**: U2 Code Generation Plan v1.0 확정 → Step A~C 순차 실행:
+- Step A — `internal/announce/catalog_default.go`: `NightStepChanged` switch 에 `NightStepIntro → return Announcement{}` 케이스 1건 + 의도 코멘트.
+- Step B — `internal/announce/catalog_test.go::TestRender_NightStepChanged`: `NightStepIntro` IsEmpty 단언 1건 추가 (RESOLVED 와 동일 형식).
+- Step C — `go vet ./internal/announce/...` PASS, `go test ./internal/announce/... -race` PASS, `go test ./... -count=1` 6 패키지 PASS, announce 커버리지 94.3% (이전 94.0% → +0.3pp).
+모든 plan 체크박스 [x]. aidlc-state.md U2 섹션 [x] 마킹.
+**Context**: Phase B 종료. 다음: Phase C (U3 Realtime Transport — 검증 only).
+
+---
+
+## Iteration 8 — Phase C (U3 검증) 사용자 승인 + 실행
+**Timestamp**: 2026-04-29T22:35:00Z
+**User Input**: "A"
+**AI Response**: U3 Realtime Transport 검증 단계 — 코드 변경 0건, 회귀 테스트 1건 추가:
+- `internal/transport/ws/dispatch.go::buildEventPayload` 가 `NightStep` 을 string passthrough 로 처리하여 INTRO 도 자동 직렬화 됨을 확인 (분기 추가 불필요).
+- `internal/transport/ws/protocol_test.go::TestBuildEventPayload_NightStepIntroSerializes` 회귀 테스트 1건 추가 — wire JSON 에 `"step":"INTRO"` 포함 검증.
+- FD Note 작성: `aidlc-docs/construction/u3-realtime-transport/functional-design/iteration8-patch.md` v1.0 (검증 only).
+- 검증 결과: `go test ./internal/transport/ws/... -race` PASS, `go test ./... -count=1` 6 패키지 PASS, ws 커버리지 82.3% (baseline 82.4% 대비 -0.1pp — 신규 테스트로 분모 증가, 신규 라인 100% 커버).
+**Context**: Phase C 종료. 다음: Phase D (U5 Web Frontend — wire 유니온 + reducer 회귀).
+
+---
+
+## Iteration 8 — Phase C 사용자 승인 + Phase D (U5 FD) 진입
+**Timestamp**: 2026-04-29T22:40:00Z
+**User Input**: "A)"
+**AI Response**: Phase C 종료. Phase D 진입 — U5 Web Frontend FD patch 작성. 현황 조사:
+- `web/src/types/wire.ts:9` NightStep 유니온이 `"MAFIA" | "POLICE" | "DOCTOR" | "RESOLVED"` — INTRO 추가 필요.
+- `reducer.ts` 의 NightStepChanged 핸들러는 `ev.step` 을 그대로 저장 — INTRO 자동 호환.
+- `MafiaPicker.tsx` / `PolicePicker.tsx` / `DoctorPicker.tsx` 는 정확히 `nightStep === "MAFIA|POLICE|DOCTOR"` 비교 — INTRO 단계에서 모든 picker 자동 비활성화.
+- `PublicView.tsx::NIGHT_STEP_LABEL` 에 INTRO 매핑 없음 → 5초 INTRO 동안 TimerBar 가 label 없이 표시. 신규 라벨 "밤이 시작됩니다" 추가 권장.
+사용자 승인 게이트(2-옵션).
+**Context**: Phase D.1 진입.
+
+---
+
+## Iteration 8 — Phase D.1 (U5 FD) 사용자 승인 + Code Gen Plan 작성
+**Timestamp**: 2026-04-29T22:50:00Z
+**User Input**: "A)"
+**AI Response**: U5 FD patch v1.0 확정. `iteration8-u5-code-generation-plan.md` 작성 (Step A~D). 영향 파일 3건: `wire.ts` (유니온 +1), `PublicView.tsx` (라벨 +1), `reducer.test.ts` (I8-W1 신규). 사용자 승인 게이트.
+**Context**: Phase D.2 진입.
+
+---
+
+## Iteration 8 — Phase D.2 (U5 Code Gen) 사용자 승인 + Step A~D 실행
+**Timestamp**: 2026-04-29T23:00:00Z
+**User Input**: "A)"
+**AI Response**: U5 Code Generation Plan v1.0 확정 → Step A~D 순차 실행:
+- Step A — `web/src/types/wire.ts`: `NightStep` 유니온에 `"INTRO"` 추가 (첫 번째 위치).
+- Step B — `web/src/views/PublicView/PublicView.tsx`: `NIGHT_STEP_LABEL` 에 `INTRO: "밤이 시작됩니다"` 라벨 1건 추가.
+- Step C — `web/src/context/reducer.test.ts`: I8-W1 `NightStepChanged{step: "INTRO"}` 회귀 테스트 1건 추가 — `state.nightStep === "INTRO"` + `nightStepDeadline` ISO 변환 검증.
+- Step D — `npm run typecheck` PASS, `npm test` 66 PASS (이전 65 → +1, 신규 I8-W1), `npm run build` 성공 (JS gzip 65.62 KB Iteration 7 baseline 동일), `go build -o /tmp/mafia-game-iter8-final ./cmd/mafia-game` 17.97 MB 성공 (정적 자산 임베드 갱신).
+모든 plan 체크박스 [x]. aidlc-state.md U5 섹션 [x] 마킹.
+**Context**: Phase D 종료. 다음: Phase E (Build & Test — 통합 검증 결과 문서 작성).
+
+---
+
+## Iteration 8 — Phase E (Build & Test) 통합 결과 작성
+**Timestamp**: 2026-04-29T23:10:00Z
+**User Input**: "A)"
+**AI Response**: 통합 검증 실행:
+- `go test ./... -count=1 -race` 6 패키지 PASS (announce 1.36s / game 1.50s / persistence 1.96s / session 2.55s / transport/http 2.21s / transport/ws 4.13s).
+- 패키지별 커버리지: announce 94.3% (+0.3pp) / game 91.8% (+0.1pp) / persistence 80.2% / session 87.3% / transport/http 90.3% / transport/ws 82.3% (-0.1pp 분모 증가, 신규 라인 100% 커버).
+- `npm test` 66 PASS, `npm run build` JS gzip 65.62 KB / CSS 3.21 KB / dist/audio 2.3 MB (Iteration 7 baseline 동일).
+- `go build` 17.97 MB.
+- `aidlc-docs/construction/build-and-test/iteration8-test-results.md` v1.0 작성 — FR-1~FR-8 추적 매트릭스, 패키지별 커버리지 표, 빌드 사이즈 표, 회귀 영향 분석(Iter4/5/7), NFR 영향, 사용자 체감 흐름표, DoD 체크리스트, RISK 결산, OPERATIONS 권장 사항. 모든 plan 체크박스 [x].
+사용자 최종 승인 게이트.
+**Context**: Phase E 종료, Iteration 8 통합 검증 완료. 사용자 승인 후 Iteration 8 종료.
+
+---
+
+## Iteration 8 — 사용자 최종 승인 + 종료
+**Timestamp**: 2026-04-29T23:20:00Z
+**User Input**: "A)"
+**AI Response**: Iteration 8 (Fix · 밤 진입 안내) 종료. 모든 단위(U1/U2/U3/U5) Functional Design Patch + Code Generation Plan + Code Generation 사용자 승인 완료, Build and Test 결과 v1.0 사용자 최종 승인. aidlc-state.md 의 Iteration 8 Build and Test 체크박스 [x] 마킹. OPERATIONS placeholder 로 이동 — Chrome DevTools MCP 다중 컨텍스트 회귀(투표 종료→밤 안내 5s→마피아 시간 / 사망 발표→5s→토론 타이머 / 첫째날 버퍼 없음 / INTRO 중 Pause 거부) 는 사용자 트리거 대기.
+변경 미커밋 — 사용자 명시적 commit 지시 후 진행 예정.
+**Context**: Iteration 8 완료. Branch `worktree-fix+vote-result` 작업 트리에 모든 변경 보존됨.
+
+---
+
+## Iteration 8 — 사후 튜닝: 낮→밤 전이 인터벌 5s → 15s
+**Timestamp**: 2026-04-29T23:30:00Z
+**User Input**: "낮에서 밤으로 넘어가는 시간을 5초에서 15초로 증가"
+**AI Response**: `internal/game/types.go::defaultNightIntroSeconds` 상수 변경 5 → 15. 다른 변경 없음:
+- `defaultDayIntroSeconds` 는 5 그대로 (밤→낮 사망 발표 버퍼는 변동 없음).
+- 테스트는 모두 상수 참조 방식이라 자동 적응 (I8-T1/T3, `advanceToNight` 헬퍼, `TestI5_CustomNightSecondsRespected` 의 `state.LastTickAt + slop` 계산 모두 무손상).
+- 검증: `go test ./... -count=1` 6 패키지 PASS, `go test ./internal/game/... -race` PASS, `go build` 17.97 MB 성공.
+- 사용자 체감 변경: VOTE 종료 후 "밤이 되었습니다" 안내 → 15초 무음 (이전 5초) → "마피아의 시간" 시작. mp3 cue (`phase.night` ~3s) 종료 후 12초 여유 → 플레이어 화면 전환/마피아 동선 확인 시간 증가.
+원본 RA 의 Q2=A 답변(5초)은 v1.0 결정으로 보존하고, 본 튜닝은 사후 운영 결정으로 audit 에만 기록.
+**Context**: Iteration 8 운영 단계 튜닝. PR 미생성 / 미커밋.
+
+---
+
+## Iteration 8 — 사후 튜닝 #2: 낮→밤 전이 인터벌 15s → 20s
+**Timestamp**: 2026-04-29T23:35:00Z
+**User Input**: "20초로 늘려주세요"
+**AI Response**: `internal/game/types.go::defaultNightIntroSeconds` 15 → 20. `defaultDayIntroSeconds` 5 유지. `go test ./...` 6 패키지 PASS, `go build` 성공. 사용자 체감 변경: VOTE 종료 → "밤이 되었습니다" (~3초) → **17초 무음 여유** → "마피아의 시간".
+**Context**: Iteration 8 사후 튜닝 누적 2회차. 미커밋.
+
+---

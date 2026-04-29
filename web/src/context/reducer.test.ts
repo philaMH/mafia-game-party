@@ -575,6 +575,29 @@ describe("gameReducer", () => {
     expect(next.state?.nightStepDeadline).toBe(new Date(ts).toISOString());
   });
 
+  it("NightStepChanged with step=INTRO records nightStep + deadline (Iteration 8)", () => {
+    const seeded = {
+      ...initialState,
+      state: { ...baseState, phase: "NIGHT" as const, day: 2 },
+    };
+    const ts = 1714000005000;
+    const next = gameReducer(seeded, {
+      type: "ws_message",
+      msg: {
+        type: "event",
+        visibility: "PUBLIC",
+        event: {
+          kind: "NightStepChanged",
+          step: "INTRO",
+          day: 2,
+          stepDeadlineMs: ts,
+        },
+      },
+    });
+    expect(next.state?.nightStep).toBe("INTRO");
+    expect(next.state?.nightStepDeadline).toBe(new Date(ts).toISOString());
+  });
+
   it("GamePaused / GameResumed toggle state.paused (Iteration 5)", () => {
     const seeded = {
       ...initialState,
