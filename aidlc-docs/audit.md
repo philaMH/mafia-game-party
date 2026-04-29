@@ -1889,6 +1889,149 @@ main 에는 PR#2 (`worktree-feature+main-page` Sub-feature B) 가 같은 Iterati
 
 ---
 
+
+## Iteration 10 — Intake (BGM 무한재생)
+**Timestamp**: 2026-04-30T00:40:00Z
+**User Input**: "이 게임의 bgm을 넣으려고 해. 하나의 음원을 호스트 화면에서 무한재생할 수 있을까?"
+**AI Response**: 가능 여부 확인(예: HTMLAudioElement.loop=true) + 트레이드오프(autoplay 게이트, 효과음과의 볼륨/덕킹 균형) 안내 후 BGM 음원 보유 여부 질의.
+**Context**: Iteration 10 INCEPTION 진입 (Brownfield, 5단위 구조 보존, 작업 브랜치 `feature+bgm`).
+
+---
+
+## Iteration 10 — BGM 음원 위치 확인
+**Timestamp**: 2026-04-30T00:42:00Z
+**User Input**: "@web/public/audio/bgm.mp3 파일입니다."
+**AI Response**: `web/public/audio/bgm.mp3` 존재 확인. AI-DLC 워크플로우 진입 결정 — Workspace Detection (Brownfield 연속 iteration), Requirements Analysis 명료화 질문지 작성으로 진행.
+**Context**: Iteration 10 INCEPTION — Workspace Detection 갱신 + Requirements 명료화 질문 6건 발행 예정.
+
+---
+
+## Iteration 10 — Workspace Detection (Brownfield 연속)
+**Timestamp**: 2026-04-30T00:44:00Z
+**User Input**: (자동 진행)
+**AI Response**: Brownfield, 5단위 구조 + Iteration 1~9 산출물 보존. BGM 변경은 U5(Web Frontend) 단독 영향 예상. 기존 자산 식별: `web/src/hooks/useAudioCueQueue.ts`(효과음 FIFO), `web/src/views/PublicView/PublicView.tsx`(isHost 가드), `web/src/views/PublicView/VoiceToggle.tsx`(음성 토글), `web/public/audio/bgm.mp3`(신규 BGM 자산). Reverse Engineering SKIP — 기존 산출물 활용. Requirements Analysis 진입.
+**Context**: Iteration 10 Workspace Detection 완료.
+
+---
+
+## Iteration 10 — Requirements 명료화 답변 수신
+**Timestamp**: 2026-04-30T00:55:00Z
+**User Input**: "완료" — `iteration10-bgm-questions.md` 채움. Q1=A / Q2=A / Q3=B / Q4=A / Q5=A / Q6=A
+**AI Response**: 답변 6건 확정. 해석:
+- Q1=A: PublicView 진입(호스트 priming) 직후 BGM 자동 시작.
+- Q2=A: 기존 VoiceToggle 옆에 별도 BGM 토글 버튼 신설.
+- Q3=B: 덕킹 없음 — BGM 은 저볼륨 고정, 효과음 cue 가 그대로 위에 얹힘.
+- Q4=A: 기본 볼륨 0.15.
+- Q5=A: Pause/GameEnded 시 BGM 유지(중단 없음), 새로고침 후 첫 사용자 제스처(priming) 필요.
+- Q6=A: 자산 누락/디코딩 실패 시 console.warn 만 출력, 게임 진행 영향 없음.
+다음: `iteration10-bgm-requirements.md` v1.0 작성 후 사용자 승인 게이트.
+**Context**: Iteration 10 INCEPTION — Requirements Analysis 답변 확정.
+
+---
+
+## Iteration 10 — Requirements Analysis 사용자 승인
+**Timestamp**: 2026-04-30T01:00:00Z
+**User Input**: "A"
+**AI Response**: `iteration10-bgm-requirements.md` v1.0 사용자 승인 완료. aidlc-state.md Requirements Analysis 체크박스 [x] 마킹, User Stories SKIP 확정. Workflow Planning(`construction/plans/iteration10-execution-plan.md` v1.0) 작성 진입.
+**Context**: Iteration 10 INCEPTION — Requirements Analysis 종료, Workflow Planning 진입.
+
+---
+
+## Iteration 10 — Workflow Planning v1.0 작성
+**Timestamp**: 2026-04-30T01:05:00Z
+**User Input**: (자동 진행)
+**AI Response**: `construction/plans/iteration10-execution-plan.md` v1.0 작성 완료. 영향 단위 U5 단독 (U1~U4 모두 SKIP). 단계: Functional Design Patch → Code Generation Plan → Code Generation → Build & Test. 승인 게이트 5건. 사용자 승인 게이트 대기.
+**Context**: Iteration 10 INCEPTION — Workflow Planning 작성 완료, 승인 게이트.
+
+---
+
+## Iteration 10 — Workflow Planning v1.0 사용자 승인
+**Timestamp**: 2026-04-30T01:10:00Z
+**User Input**: "A"
+**AI Response**: `iteration10-execution-plan.md` v1.0 사용자 승인 완료. aidlc-state.md Workflow Planning 체크박스 [x] 마킹, Application Design / Units Generation SKIP 확정. U5 Functional Design Patch 작성 진입.
+**Context**: Iteration 10 INCEPTION → CONSTRUCTION 진입. Workflow Planning 종료.
+
+---
+
+## Iteration 10 — U5 Functional Design Patch v1.0 작성
+**Timestamp**: 2026-04-30T01:15:00Z
+**User Input**: (자동 진행)
+**AI Response**: `aidlc-docs/construction/u5-web-frontend/functional-design/iteration10-patch.md` v1.0 작성 완료.
+- 신규 hook `useBgm(enabled)` 인터페이스 + 동작 표 + 상태 다이어그램 명세
+- 신규 컴포넌트 `BgmToggle` props/스타일/배치 명세
+- `PublicView.tsx` 통합 표 (`bgmOn` useState 초기값 true, `useBgm(isHost && bgmOn && Boolean(hostToken))` 가드)
+- FR-1~FR-7 매핑, 회귀 영향 분석(useAudioCueQueue/VoiceToggle/GameContext/Go 서버 모두 무영향), 빌드 사이즈 예상 +0.3~0.4 KB
+사용자 승인 게이트 대기.
+**Context**: Iteration 10 CONSTRUCTION U5 — Functional Design Patch 작성 완료.
+
+---
+
+## Iteration 10 — U5 Functional Design Patch v1.0 사용자 승인
+**Timestamp**: 2026-04-30T01:20:00Z
+**User Input**: "A"
+**AI Response**: `iteration10-patch.md` v1.0 사용자 승인 완료. aidlc-state.md U5 Functional Design Patch [x]. Code Generation Plan 작성 진입.
+**Context**: Iteration 10 CONSTRUCTION U5 — Functional Design Patch 종료, Code Generation Plan 진입.
+
+---
+
+## Iteration 10 — U5 Code Generation Plan v1.0 작성
+**Timestamp**: 2026-04-30T01:25:00Z
+**User Input**: (자동 진행)
+**AI Response**: `aidlc-docs/construction/plans/iteration10-u5-code-generation-plan.md` v1.0 작성 완료. Step A~F 정의:
+- Step A: `web/src/hooks/useBgm.ts` (신규, ~50 lines)
+- Step B: `web/src/hooks/useBgm.test.ts` (신규, T1~T4 4 케이스, FakeAudio mock)
+- Step C: `web/src/views/PublicView/BgmToggle.tsx` (신규, ~20 lines)
+- Step D: `PublicView.tsx` 통합 (bgmOn useState + useBgm + footer 토글)
+- Step E: typecheck/test/build/go test 검증
+- Step F: audit/state 동기화
+사용자 승인 게이트 대기.
+**Context**: Iteration 10 CONSTRUCTION U5 — Code Generation Plan 작성 완료.
+
+---
+
+## Iteration 10 — U5 Code Generation Plan v1.0 사용자 승인 (자율진행 지시)
+**Timestamp**: 2026-04-30T01:30:00Z
+**User Input**: "A. Construction 자율진행"
+**AI Response**: `iteration10-u5-code-generation-plan.md` v1.0 사용자 승인 + Construction 자율진행 지시 수신. 단계 사이 승인 게이트 생략 → Code Generation 실행 + 검증 + Build & Test 결과 문서까지 작성 후 최종 승인 게이트 단일 호출.
+**Context**: Iteration 10 CONSTRUCTION U5 — Code Generation Plan 종료, Code Generation 자율 실행 진입.
+
+---
+
+## Iteration 10 — Code Generation 실행 결과
+**Timestamp**: 2026-04-30T02:00:00Z
+**User Input**: (자율진행)
+**AI Response**: Step A~F 완료.
+- Step A — `web/src/hooks/useBgm.ts` 신규 53 라인. 단일 `HTMLAudioElement`, `loop=true`, `volume=0.15`, `preload=auto`, error 리스너, enabled effect (play→catch console.warn / pause), unmount cleanup.
+- Step B — `web/src/hooks/useBgm.test.ts` 신규 105 라인. FakeAudio mock + globalThis.Audio 교체. T1 loop/volume/play / T2 토글 OFF currentTime 보존 / T3 play rejection graceful / T4 unmount cleanup.
+- Step C — `web/src/views/PublicView/BgmToggle.tsx` 신규 21 라인. `btn-noir sm` 스타일, ON 시 `var(--gold)` 색상, 라벨 `🎵 배경음 ON/OFF`.
+- Step D — `web/src/views/PublicView/PublicView.tsx` 수정: import 2건(`useBgm`, `BgmToggle`), `bgmOn` useState (초기값 true), `useBgm(isHost && bgmOn && Boolean(ctx.hostToken))` 호출, footer `BgmToggle` 렌더 추가 (`VoiceToggle` 직전).
+- Step E — 검증:
+  - `npx tsc --noEmit` PASS (초기 ts-expect-error 미사용 1건 수정)
+  - `npm test` 75 PASS (이전 71 → +4 useBgm)
+  - `npm run build` 성공, JS gzip 66.01 KB (baseline 65.71 → +0.30 KB, NFR-1 ≤ +0.5 KB) / CSS gzip 3.21 KB 동일
+  - `go test ./... -count=1 -race` 6 패키지 PASS (announce 1.39s / game 1.62s / persistence 2.08s / session 2.67s / transport/http 2.46s / transport/ws 3.93s)
+  - `go build -o /tmp/mafia-game-iter10` 성공, 26,494,482 bytes (baseline 17,970,000 → +8.52 MB, `bgm.mp3` 8.44 MB 임베드 반영)
+- Step F — audit.md / aidlc-state.md 동기화 (본 entry 포함).
+**Context**: Iteration 10 CONSTRUCTION U5 — Code Generation 완료, Build & Test 결과 문서 작성 진입.
+
+---
+
+## Iteration 10 — Build & Test Results v1.0 작성
+**Timestamp**: 2026-04-30T02:05:00Z
+**User Input**: (자율진행)
+**AI Response**: `aidlc-docs/construction/build-and-test/iteration10-test-results.md` v1.0 작성 완료. FR-1~FR-7 / NFR-1~5 / AC-1~AC-8 추적 매트릭스, 검증 결과 표(typecheck/test/build/go test/go build), 회귀 영향 분석, NFR 영향, DoD 체크리스트, 후속 권장 사항(Operations 회귀 / BGM 토글 영속화 / BGM 자산 경량화) 포함. 사용자 최종 승인 게이트 대기.
+**Context**: Iteration 10 CONSTRUCTION 공통 Build and Test — 결과 문서 작성 완료, 최종 승인 게이트.
+
+---
+
+## Iteration 10 — Build & Test Results v1.0 사용자 최종 승인 + 종료
+**Timestamp**: 2026-04-30T02:10:00Z
+**User Input**: "A"
+**AI Response**: `iteration10-test-results.md` v1.0 사용자 최종 승인 완료. **Iteration 10 (호스트 BGM 무한재생) 종료**. aidlc-state.md Build and Test 체크박스 [x] + 종료 stamp 추가.
+요약 — 변경 표면: U5 단독 (`web/src/hooks/useBgm.{ts,test.ts}` 신규 53+105 라인 / `web/src/views/PublicView/BgmToggle.tsx` 신규 21 라인 / `web/src/views/PublicView/PublicView.tsx` +5/-0). FR-1 priming 직후 자동 시작 / FR-2 별도 토글 / FR-3 저볼륨 0.15 + 덕킹 없음 / FR-4 Pause·GameEnded 유지 / FR-5 graceful 실패 / FR-6 호스트 한정 / FR-7 unmount cleanup. 검증: `npm test` 71 → 75 PASS, JS gzip 65.71 → 66.01 KB (+0.30 KB, NFR-1 ≤ +0.5 KB), `go test ./... -race` 6 패키지 PASS, `go build` 26.49 MB (bgm.mp3 8.44 MB 임베드 반영).
+변경 미커밋 — 사용자 명시적 commit 지시 후 진행 예정. OPERATIONS placeholder 로 이동: Chrome DevTools MCP 회귀 (priming/모바일/토글/플레이어 가드) 사용자 트리거 대기. 후속 권장: BGM 토글 영속화, BGM 자산 경량화 (각 별도 iteration).
+**Context**: Iteration 10 종료. 작업 트리 `feature+bgm` 에 모든 변경 보존됨.
+
 ---
 
 ## Iteration 9 — 신규 결함 보고 (Welcome Back)

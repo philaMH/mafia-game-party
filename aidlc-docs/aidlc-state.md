@@ -502,3 +502,40 @@
 ### 🟡 OPERATIONS
 - [ ] Chrome DevTools MCP 회귀 (호스트 + 4 player) — Vote-end CITIZEN_WIN / Night-end MAFIA_WIN / Pause-Resume mid-buffer / HOST_FORCE_END mid-buffer 4 시나리오 (사용자 트리거 권장)
 
+---
+
+## Iteration 10 Stage Progress (2026-04-30) — Feature · 호스트 BGM 무한재생
+
+**브랜치**: `feature+bgm` (worktree: `.claude/worktrees/feature+bgm`)
+**자산**: `web/public/audio/bgm.mp3` (이미 배치됨)
+**트리거**: 사용자 요청 — "이 게임의 bgm을 넣으려고 해. 하나의 음원을 호스트 화면에서 무한재생할 수 있을까?"
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~9 산출물 보존, 영향 단위 U5 단독 예상
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration10-bgm-requirements.md` v1.0 (사용자 승인 2026-04-30T01:00:00Z, Q1=A / Q2=A / Q3=B / Q4=A / Q5=A / Q6=A)
+- [x] User Stories — SKIP (단일 호스트 페르소나, UX 작은 추가)
+- [x] Workflow Planning — `construction/plans/iteration10-execution-plan.md` v1.0 (사용자 승인 2026-04-30T01:10Z)
+- [x] Application Design — SKIP (도메인 인터페이스 추가 없음, U5 hook 1건 신설 + PublicView 통합)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION (예정)
+
+#### U1 Game Core / U2 Session/Persistence/Announce / U3 Realtime Transport / U4 HTTP Bootstrap
+- [ ] 모든 단계 SKIP 예정 (Go 코드 변경 없음 — `bgm.mp3` 는 기존 `audioHandler` 정적 라우팅으로 자동 서빙)
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — `construction/u5-web-frontend/functional-design/iteration10-patch.md` v1.0 (사용자 승인 2026-04-30T01:20Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration10-u5-code-generation-plan.md` v1.0 (사용자 승인 + 자율진행 지시 2026-04-30T01:30Z)
+- [x] Code Generation — Step A~F 완료 (2026-04-30T02:00Z). `web/src/hooks/useBgm.{ts,test.ts}` 신규(53+105 라인), `web/src/views/PublicView/BgmToggle.tsx` 신규(21 라인), `web/src/views/PublicView/PublicView.tsx` 수정(+5/-0). `npm test` 71 → 75 PASS, JS gzip 65.71 → 66.01 KB (+0.30 KB), `go test ./... -race` 6 패키지 PASS, `go build` 26.49 MB (bgm.mp3 8.44 MB 임베드).
+
+#### 공통
+- [x] Build and Test — `aidlc-docs/construction/build-and-test/iteration10-test-results.md` v1.0 (사용자 최종 승인 2026-04-30T02:10Z).
+
+**Iteration 10 종료** (2026-04-30T02:10Z) — 호스트 화면 BGM 무한재생 도입. 변경 표면 U5 단독 (`useBgm` 훅 + `BgmToggle` + `PublicView` 통합). `npm test` 71 → 75 PASS, JS gzip 65.71 → 66.01 KB (+0.30 KB), `go test ./... -race` 6 패키지 PASS, `go build` 26.49 MB (bgm.mp3 8.44 MB 자산 임베드 반영).
+
+### 🟡 OPERATIONS
+- [ ] Chrome DevTools MCP 회귀 (호스트 priming 후 BGM 무한재생 / 효과음 동시 재생 시 청취감 / 새로고침 후 재priming / 모바일 Safari 자동재생 동작 / 토글 OFF→ON currentTime 보존 / 플레이어 화면 BGM 부재)
+- [ ] BGM 토글 영속화 검토 (별도 iteration — localStorage `mafia.bgm.v1` 저장)
+- [ ] BGM 자산 경량화 검토 (별도 iteration — 8.44 MB → 비트레이트/외부 CDN 분리 시 바이너리 크기 회수)
