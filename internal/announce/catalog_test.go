@@ -43,8 +43,8 @@ func TestRender_GameStarted(t *testing.T) {
 	if !strings.Contains(a.Subtitle, "마피아 게임") {
 		t.Errorf("subtitle wrong: %q", a.Subtitle)
 	}
-	if a.Subtitle != a.Speech {
-		t.Errorf("subtitle != speech")
+	if a.AudioID != "game.started" {
+		t.Errorf("audioId = %q, want game.started", a.AudioID)
 	}
 	if !a.ForPublicOnly {
 		t.Error("public events must be ForPublicOnly")
@@ -184,6 +184,105 @@ func TestRender_EliminatedIncludesRoleKr(t *testing.T) {
 	}
 }
 
+// Iter7 §3.5 — voice splits Eliminated into mafia vs non-mafia cues, while
+// the subtitle keeps the exact role-kr (so players still see the lynched
+// role). Verifies the audio cue branches correctly per role.
+func TestRender_EliminatedAudioCueSplitsOnMafia(t *testing.T) {
+	cases := []struct {
+		role    game.Role
+		wantCue string
+	}{
+		{game.RoleMafia, "eliminated.mafia"},
+		{game.RoleDoctor, "eliminated.notmafia"},
+		{game.RolePolice, "eliminated.notmafia"},
+		{game.RoleCitizen, "eliminated.notmafia"},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.role), func(t *testing.T) {
+			a := render(t, game.Eliminated{PlayerID: "p1", Role: tc.role}, game.VisPublic)
+			if a.AudioID != tc.wantCue {
+				t.Errorf("audioId = %q, want %q", a.AudioID, tc.wantCue)
+			}
+		})
+	}
+}
+
+// Iter7 FR-8.9 — every public event that produces a non-empty subtitle
+// also names a stable audio cue identifier. This is the single contract
+// the host client relies on to map announcements to /audio/<id>.mp3.
+func TestRender_AudioCueAssignmentCoversCatalog(t *testing.T) {
+	winner := game.TeamCitizen
+	target := game.PlayerID("p2")
+	cases := []struct {
+		name    string
+		event   game.Event
+		wantCue string
+	}{
+		{"game.started", game.GameStarted{}, "game.started"},
+		{"phase.intro", game.PhaseChanged{Phase: game.PhaseIntro, Day: 1}, "phase.intro"},
+		{"phase.night", game.PhaseChanged{Phase: game.PhaseNight, Day: 1}, "phase.night"},
+		{"phase.day.first", game.PhaseChanged{Phase: game.PhaseDay, Day: 1}, "phase.day.first"},
+		{"phase.day", game.PhaseChanged{Phase: game.PhaseDay, Day: 3}, "phase.day"},
+		{"phase.vote", game.PhaseChanged{Phase: game.PhaseVote, Day: 1}, "phase.vote"},
+		{"phase.recount", game.PhaseChanged{Phase: game.PhaseRecount, Day: 1}, "phase.recount"},
+		{"night.mafia", game.NightStepChanged{Step: game.NightStepMafia}, "night.mafia"},
+		{"night.police", game.NightStepChanged{Step: game.NightStepPolice}, "night.police"},
+		{"night.doctor", game.NightStepChanged{Step: game.NightStepDoctor}, "night.doctor"},
+		{"intro.speaker", game.IntroSpeakerChanged{PlayerID: "p1"}, "intro.speaker"},
+		{"death.announced", game.DeathAnnounced{Victim: "p1"}, "death.announced"},
+		{"peaceful.night", game.PeacefulNight{}, "peaceful.night"},
+		{"timer.30", game.DiscussionTimerTick{SecondsLeft: 30}, "timer.30"},
+		{"timer.10", game.DiscussionTimerTick{SecondsLeft: 10}, "timer.10"},
+		{"timer.0", game.DiscussionTimerTick{SecondsLeft: 0}, "timer.0"},
+		{"vote.noelim", game.VoteTallied{}, "vote.noelim"},
+		{"end.mafia", game.GameEnded{Winner: &winner, EndReason: game.EndMafiaWin}, "end.mafia"},
+		{"end.citizen", game.GameEnded{Winner: &winner, EndReason: game.EndCitizenWin}, "end.citizen"},
+		{"end.force", game.GameEnded{EndReason: game.EndHostForceEnd}, "end.force"},
+		{"voice.on", game.VoiceToggled{On: true}, "voice.on"},
+		{"voice.off", game.VoiceToggled{On: false}, "voice.off"},
+		{"game.paused", game.GamePaused{Phase: game.PhaseNight}, "game.paused"},
+		{"game.resumed", game.GameResumed{Phase: game.PhaseNight}, "game.resumed"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := render(t, tc.event, game.VisPublic)
+			if a.AudioID != tc.wantCue {
+				t.Errorf("audioId = %q, want %q", a.AudioID, tc.wantCue)
+			}
+		})
+	}
+	// VoteTallied with Eliminated is silent (Eliminated event narrates).
+	silent := render(t, game.VoteTallied{Eliminated: &target}, game.VisPublic)
+	if silent.AudioID != "" {
+		t.Errorf("VoteTallied with Eliminated should have empty audioId, got %q", silent.AudioID)
+	}
+	// VoteTallied{Recount: true} is silent (PhaseChanged{PhaseRecount} narrates).
+	silentRecount := render(t, game.VoteTallied{Recount: true}, game.VisPublic)
+	if silentRecount.AudioID != "" {
+		t.Errorf("VoteTallied{Recount} should have empty audioId, got %q", silentRecount.AudioID)
+	}
+}
+
+// Error announcements never carry an audio cue — Iter7 voice catalog
+// covers public host narration only; per-player error toasts are silent.
+func TestRenderError_NoAudioID(t *testing.T) {
+	cat := announce.NewDefaultCatalog()
+	err := &game.EngineError{Code: game.CodeWrongPhase, Message: "x"}
+	a := cat.RenderError(err, "p1", ctx())
+	if a.AudioID != "" {
+		t.Errorf("error announcements must not carry audioId, got %q", a.AudioID)
+	}
+}
+
+func TestSystemHelpers_HaveAudioCues(t *testing.T) {
+	if announce.SystemRestore().AudioID != "system.restore" {
+		t.Errorf("SystemRestore audioId mismatch")
+	}
+	if announce.SystemPersistFailure().AudioID != "system.persist.failure" {
+		t.Errorf("SystemPersistFailure audioId mismatch")
+	}
+}
+
 func TestRender_DiscussionTimerThresholds(t *testing.T) {
 	for _, sl := range []int{30, 10, 0} {
 		a := render(t, game.DiscussionTimerTick{SecondsLeft: sl}, game.VisPublic)
@@ -199,10 +298,13 @@ func TestRender_DiscussionTimerThresholds(t *testing.T) {
 
 func TestRender_VoteTallied(t *testing.T) {
 	target := game.PlayerID("p2")
-	t.Run("recount", func(t *testing.T) {
+	t.Run("recount_silent", func(t *testing.T) {
+		// VoteTallied{Recount: true} is suppressed because the follow-up
+		// PhaseChanged{PhaseRecount} narrates the recount. Emitting both
+		// produced two near-identical Korean lines back-to-back.
 		a := render(t, game.VoteTallied{Recount: true}, game.VisPublic)
-		if !strings.Contains(a.Subtitle, "재투표") {
-			t.Errorf("subtitle wrong: %q", a.Subtitle)
+		if !a.IsEmpty() {
+			t.Errorf("expected empty (PhaseChanged{PhaseRecount} carries the speech), got %+v", a)
 		}
 	})
 	t.Run("noElim", func(t *testing.T) {

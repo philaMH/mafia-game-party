@@ -24,7 +24,6 @@ const (
 	msgTimer30        = "토론 종료까지 30초 남았습니다."
 	msgTimer10        = "토론 종료까지 10초 남았습니다. 마음을 정하시오."
 	msgTimer0         = "토론이 종료되었습니다."
-	msgVoteRecount    = "득표가 동률입니다. 재투표를 진행합니다."
 	msgVoteNoElim     = "재투표 또한 동률이었습니다. 오늘은 처형이 없습니다."
 	msgEndMafia       = "마피아의 승리. 어둠이 마을을 삼켰습니다."
 	msgEndCitizen     = "시민의 승리. 정의가 어둠을 몰아냈습니다."
@@ -58,7 +57,7 @@ func roleKr(r game.Role) string {
 func SystemRestore() Announcement {
 	return Announcement{
 		Subtitle:      msgRestoreNotice,
-		Speech:        msgRestoreNotice,
+		AudioID:       cueSystemRestore,
 		Severity:      SeverityInfo,
 		ForPublicOnly: true,
 	}
@@ -69,7 +68,7 @@ func SystemRestore() Announcement {
 func SystemPersistFailure() Announcement {
 	return Announcement{
 		Subtitle:      msgPersistFailure,
-		Speech:        msgPersistFailure,
+		AudioID:       cueSystemPersistFailure,
 		Severity:      SeverityWarn,
 		ForPublicOnly: true,
 	}

@@ -17,6 +17,10 @@ func buildMux(cfg Config, log *slog.Logger) *http.ServeMux {
 	mux.Handle("GET /ws", cfg.Hub.UpgradeHandler())
 	mux.Handle("GET /api/results", resultsHandler(cfg.Store, log))
 	mux.Handle("GET /assets/", assetsHandler(cfg.Assets))
+	// Iter7 — pre-recorded host narration. Files are served by audioId
+	// (e.g. /audio/phase.night.mp3); when missing, the host client
+	// gracefully skips per FR-8.8.
+	mux.Handle("GET /audio/", audioHandler(cfg.Assets))
 	// Catch-all SPA fallback. ServeMux will route specific patterns
 	// above first; everything else lands here and receives index.html
 	// so React Router can resolve the path client-side.
@@ -41,6 +45,21 @@ func assetsHandler(assets fs.FS) http.Handler {
 	fileServer := http.FileServer(http.FS(assets))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		fileServer.ServeHTTP(w, r)
+	})
+}
+
+// audioHandler serves pre-recorded narration MP3s under `/audio/`.
+// Unlike `/assets/`, audio filenames are not content-hashed (they map
+// to stable audioId values), so we use a short cache window — operators
+// can replace an mp3 by dropping a new file and rebuilding without
+// fighting client caches. When a file is missing the FileServer returns
+// 404 and the host client falls through to subtitle-only display per
+// Iter7 FR-8.8.
+func audioHandler(assets fs.FS) http.Handler {
+	fileServer := http.FileServer(http.FS(assets))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400")
 		fileServer.ServeHTTP(w, r)
 	})
 }

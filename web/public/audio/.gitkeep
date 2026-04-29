@@ -1,0 +1,11 @@
+# Iter7 — 사전 녹음 음성 파일 디렉터리
+#
+# 이 디렉터리에는 호스트 PublicView 가 재생할 한국어 진행자 멘트
+# MP3 파일이 위치합니다. 파일명은 `aidlc-docs/inception/requirements/
+# iteration7-voice-script.md` §3 의 audioId 와 정확히 일치해야 합니다.
+# 예: game.started.mp3, phase.night.mp3, eliminated.mafia.mp3
+#
+# 누락된 파일은 콘솔 경고를 남기고 자막만 표시합니다 (FR-8.8 graceful
+# skip). 실제 mp3 는 이 저장소에 커밋하지 않으며, 외부에서 별도 준비
+# 후 본 디렉터리에 배치하면 vite/Go 빌드가 자동으로 정적 자산으로
+# 포함합니다.

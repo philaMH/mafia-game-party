@@ -184,7 +184,7 @@ export function PublicView() {
           zIndex: 20,
         }}
       >
-        {!ctx.ttsAvailable && (
+        {isHost && !ctx.audioAvailable && (
           <span
             className="serif"
             style={{ color: "var(--paper-dim)", fontSize: "0.85rem", fontStyle: "italic" }}
@@ -192,11 +192,13 @@ export function PublicView() {
             이 브라우저는 음성 안내를 지원하지 않습니다. 자막으로 대체합니다.
           </span>
         )}
-        <VoiceToggle
-          on={ctx.voiceOn}
-          available={ctx.ttsAvailable}
-          onChange={ctx.toggleVoice}
-        />
+        {isHost && (
+          <VoiceToggle
+            on={ctx.voiceOn}
+            available={ctx.audioAvailable}
+            onChange={ctx.toggleVoice}
+          />
+        )}
       </footer>
 
       <ToastList errors={ctx.errors} onDismiss={ctx.ackError} />

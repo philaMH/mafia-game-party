@@ -268,18 +268,151 @@ describe("gameReducer", () => {
     expect(next.voiceOn).toBe(false);
   });
 
-  it("announce updates lastAnnounce", () => {
+  it("announce updates lastAnnounce with audioId", () => {
     const next = reduce({
       type: "ws_message",
       msg: {
         type: "announce",
         subtitle: "테스트 안내",
-        speech: "테스트 안내",
+        audioId: "phase.night",
         severity: "EMPHASIS",
       },
     });
     expect(next.lastAnnounce?.subtitle).toBe("테스트 안내");
+    expect(next.lastAnnounce?.audioId).toBe("phase.night");
     expect(next.lastAnnounce?.severity).toBe("EMPHASIS");
+  });
+
+  it("announce without audioId leaves it undefined (graceful skip)", () => {
+    const next = reduce({
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "자막 전용",
+        severity: "INFO",
+      },
+    });
+    expect(next.lastAnnounce?.subtitle).toBe("자막 전용");
+    expect(next.lastAnnounce?.audioId).toBeUndefined();
+    // Audio cue log must NOT grow when audioId is empty.
+    expect(next.audioCues).toHaveLength(0);
+    expect(next.audioCueSeq).toBe(0);
+  });
+
+  it("announce with audioId appends a unique-seq audioCue tagged with current lastEventKind", () => {
+    // Simulate the server frame order: PhaseChanged event arrives first,
+    // then the corresponding announce. The cue should record
+    // eventKind=PhaseChanged so the URGENT branch fires downstream.
+    const afterPhase = reduce({
+      type: "ws_message",
+      msg: {
+        type: "event",
+        visibility: "PUBLIC",
+        event: { kind: "PhaseChanged", phase: "NIGHT", day: 2, deadlineMs: 0 },
+      },
+    });
+    const afterAnnounce = gameReducer(afterPhase, {
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "이제 밤이 깊어졌습니다.",
+        audioId: "phase.night",
+        severity: "EMPHASIS",
+      },
+    });
+    expect(afterAnnounce.audioCues).toHaveLength(1);
+    expect(afterAnnounce.audioCues[0]).toMatchObject({
+      audioId: "phase.night",
+      eventKind: "PhaseChanged",
+      seq: 1,
+    });
+    expect(afterAnnounce.audioCueSeq).toBe(1);
+  });
+
+  it("audioCues preserves every announce when batched between PhaseChanged and NightStepChanged (regression)", () => {
+    // Server emits PhaseChanged(NIGHT) → announce phase.night →
+    // NightStepChanged(MAFIA) → announce night.mafia. Even when React
+    // batches all four into a single render, every cue must remain
+    // recorded in the queue with its own seq and eventKind.
+    let s = reduce({
+      type: "ws_message",
+      msg: {
+        type: "event",
+        visibility: "PUBLIC",
+        event: { kind: "PhaseChanged", phase: "NIGHT", day: 2, deadlineMs: 0 },
+      },
+    });
+    s = gameReducer(s, {
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "이제 밤이 깊어졌습니다.",
+        audioId: "phase.night",
+        severity: "EMPHASIS",
+      },
+    });
+    s = gameReducer(s, {
+      type: "ws_message",
+      msg: {
+        type: "event",
+        visibility: "PUBLIC",
+        event: { kind: "NightStepChanged", step: "MAFIA", day: 2 },
+      },
+    });
+    s = gameReducer(s, {
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "마피아는 눈을 뜨고…",
+        audioId: "night.mafia",
+        severity: "EMPHASIS",
+      },
+    });
+    expect(s.audioCues).toHaveLength(2);
+    expect(s.audioCues[0]).toMatchObject({
+      audioId: "phase.night",
+      eventKind: "PhaseChanged",
+      seq: 1,
+    });
+    expect(s.audioCues[1]).toMatchObject({
+      audioId: "night.mafia",
+      eventKind: "NightStepChanged",
+      seq: 2,
+    });
+  });
+
+  it("room:closed clears audioCues but preserves audioCueSeq watermark", () => {
+    let s = reduce({
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "마피아 게임이 시작됩니다.",
+        audioId: "game.started",
+        severity: "EMPHASIS",
+      },
+    });
+    expect(s.audioCueSeq).toBe(1);
+    s = gameReducer(
+      { ...s, hostToken: "h-tok" },
+      { type: "ws_message", msg: { type: "room:closed" } },
+    );
+    expect(s.audioCues).toHaveLength(0);
+    // Preserved so the GameContext watermark keeps advancing past the
+    // last cue from the previous game.
+    expect(s.audioCueSeq).toBe(1);
+    // Host stays seated, so a fresh game-start announce continues from seq 2.
+    s = gameReducer(s, {
+      type: "ws_message",
+      msg: {
+        type: "announce",
+        subtitle: "마피아 게임이 시작됩니다.",
+        audioId: "game.started",
+        severity: "EMPHASIS",
+      },
+    });
+    expect(s.audioCues).toEqual([
+      expect.objectContaining({ audioId: "game.started", seq: 2 }),
+    ]);
   });
 
   it("error appends to errors and ack_error removes by addedAt", () => {
