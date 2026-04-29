@@ -51,24 +51,24 @@
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: brightness(0.55) saturate(0.7) contrast(1.05);
+  filter: brightness(0.85) saturate(0.8) contrast(1.05);
   z-index: 0;
   pointer-events: none;
 }
 
 .noir-bg.crop-table {
-  background-size: 200% auto !important;
-  background-position: 50% 100% !important;
+  background-size: cover !important;
+  background-position: 50% 70% !important;
 }
 
 .noir-bg.dim {
-  filter: brightness(0.32) saturate(0.55) contrast(1.05);
+  filter: brightness(0.6) saturate(0.7) contrast(1.05);
 }
 .noir-bg.deep {
-  filter: brightness(0.18) saturate(0.4) contrast(1.1) hue-rotate(-8deg);
+  filter: brightness(0.4) saturate(0.55) contrast(1.1) hue-rotate(-8deg);
 }
 .noir-bg.bloody {
-  filter: brightness(0.28) saturate(0.6) contrast(1.1) hue-rotate(-12deg) sepia(0.2);
+  filter: brightness(0.5) saturate(0.75) contrast(1.1) hue-rotate(-12deg) sepia(0.2);
 }
 
 /* Vignette overlay shared across noir surfaces */
@@ -78,7 +78,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, 0.55) 75%, rgba(0, 0, 0, 0.85) 100%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.35) 80%, rgba(0, 0, 0, 0.65) 100%),
     repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px);
   z-index: 50;
 }
@@ -93,7 +93,7 @@
 .scrim {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.7) 100%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.45) 100%);
   pointer-events: none;
   z-index: 5;
 }
