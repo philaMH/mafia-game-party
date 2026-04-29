@@ -145,13 +145,20 @@ func (e *engine) handlePauseGame(a PauseGame) (State, []EventEnvelope, error) {
 	if err := ensureHost(&e.state, a.HostID); err != nil {
 		return e.state.Clone(), nil, err
 	}
-	if !canPause(e.state.Phase) {
-		return e.state.Clone(), nil, errf(CodeWrongPhase,
-			"cannot pause during phase %s", e.state.Phase)
-	}
-	if e.state.Phase == PhaseNight && e.state.NightStep == NightStepIntro {
-		return e.state.Clone(), nil, errf(CodeWrongPhase,
-			"cannot pause during night intro")
+	// Iteration 9 FR-4: a pending result-buffer counts as a pausable
+	// timer regardless of Phase (VOTE/RECOUNT/DAY/NIGHT). The Iter5
+	// NightStepIntro guard still applies, but only when no end is
+	// pending — a vote-end mid-INTRO is impossible anyway since the
+	// scheduler runs in tally/resolveNight.
+	if e.state.PendingGameEnd == nil {
+		if !canPause(e.state.Phase) {
+			return e.state.Clone(), nil, errf(CodeWrongPhase,
+				"cannot pause during phase %s", e.state.Phase)
+		}
+		if e.state.Phase == PhaseNight && e.state.NightStep == NightStepIntro {
+			return e.state.Clone(), nil, errf(CodeWrongPhase,
+				"cannot pause during night intro")
+		}
 	}
 	if e.state.Paused {
 		return e.state.Clone(), nil, nil
@@ -189,6 +196,12 @@ func (e *engine) handleResumeGame(a ResumeGame) (State, []EventEnvelope, error) 
 			e.state.NightStepDeadline = e.state.NightStepDeadline.Add(shift)
 		}
 	}
+	// Iteration 9 FR-4: shift the pending end deadline by the same delta
+	// so a Pause/Resume during the result-announcement buffer preserves
+	// the remaining wall-clock budget.
+	if e.state.PendingGameEnd != nil {
+		e.state.PendingGameEnd.Deadline = e.state.PendingGameEnd.Deadline.Add(shift)
+	}
 	e.state.Paused = false
 	e.state.PausedAt = time.Time{}
 	// Reset LastTickAt so the next Tick re-evaluates the (shifted)
@@ -215,6 +228,9 @@ func canPause(p Phase) bool {
 }
 
 // handleForceEnd ends the game immediately with EndReason = HOST_FORCE_END.
+// Iteration 9 Q5=A: HOST_FORCE_END bypasses the result-announcement buffer
+// and clears any in-flight PendingGameEnd from a prior natural end so the
+// host's force action wins the race.
 func (e *engine) handleForceEnd(a ForceEndGame) (State, []EventEnvelope, error) {
 	if err := ensureHost(&e.state, a.HostID); err != nil {
 		return e.state.Clone(), nil, err
@@ -222,6 +238,7 @@ func (e *engine) handleForceEnd(a ForceEndGame) (State, []EventEnvelope, error) 
 	if e.state.Phase == PhaseEnd {
 		return e.state.Clone(), nil, errf(CodeWrongPhase, "already ended")
 	}
+	e.state.PendingGameEnd = nil
 	reason := EndHostForceEnd
 	e.state.Phase = PhaseEnd
 	e.state.EndReason = &reason

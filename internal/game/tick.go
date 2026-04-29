@@ -29,6 +29,14 @@ func (e *engine) Tick(now time.Time) (State, []EventEnvelope, error) {
 	if !now.After(e.state.LastTickAt) {
 		return e.state.Clone(), nil, nil
 	}
+	// Iteration 9: pending end fires before any phase progression so a
+	// vote/night-driven win lands GameEnded exactly defaultFinalResult-
+	// BufferSeconds after the result subtitle (regardless of which Phase
+	// the engine is currently parked in: VOTE/RECOUNT for vote-end, DAY
+	// for night-end). firePendingEnd updates LastTickAt itself.
+	if e.state.PendingGameEnd != nil && !now.Before(e.state.PendingGameEnd.Deadline) {
+		return e.firePendingEnd(now)
+	}
 	prev := e.state.LastTickAt
 	e.state.LastTickAt = now
 
