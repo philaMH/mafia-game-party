@@ -1258,6 +1258,11 @@ Q7. B"
 
 ---
 
+# =============================================================================
+# Iteration 7 — Sub-feature A: Voice 개편 (`worktree-refactor+voice`)
+# Sub-feature B 의 audit 는 본 섹션 종료 직후 별도 헤더로 이어집니다.
+# =============================================================================
+
 ## Iteration 7 — Initial User Request (Voice 개편)
 **Timestamp**: 2026-04-29T17:55:00Z
 **User Input**: "voice 기능을 개편합니다.\n1. 호스트만 음성 출력이 가능합니다.\n2. 진행 phase에 따라 사전 녹음된 음성파일을 재생하여 플레이 진행을 돕습니다.\n3. 녹음이 필요한 phase를 모든 상황에 따라 선별하고, 스크립트를 작성합니다. 개발자가 직접 외부에서 음성 파일을 준비하겠습니다."
@@ -1423,5 +1428,179 @@ Q7. B"
   - `/audio/intro.speaker.mp3` HEAD: 404 (누락 파일 — graceful skip 의도) ✅
   - 게임 시작(6 player isolated context join) → console: `[audio] failed to play /audio/intro.speaker.mp3: NotSupportedError` 만 발생, 다른 cue (game.started/phase.intro/phase.night/night.mafia/eliminated.mafia 등) 는 console.warn 0건 → 정상 재생 검증. `useAudioCueQueue` 의 graceful skip 동작 실측 확인.
 **Context**: 결함 해결. plan §3.1 가정 수정 → U4 = "무영향" → "u4 audioHandler 추가". aidlc-state.md / iteration7-test-results.md 갱신 필요.
+
+---
+
+# =============================================================================
+# Iteration 7 — Sub-feature B: Host 메인 메뉴 + 설정 라우트 (`worktree-feature+main-page`, PR#2 머지)
+# =============================================================================
+
+## Iteration 7 (Host menu) — Workflow Planning 사용자 승인
+**Timestamp**: 2026-04-29T18:15:00Z
+**User Input**: "승인"
+**AI Response**: Execution Plan v1.0 확정. Construction 단계 진입(시퀀스 U2 → U3 → U5 → BT). U2 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u2-session-persistence-announce/functional-design/iteration7-patch.md`) — `SaveHostOptions` 메서드 신설, `session` 구조체 `savedHostOptions/hasSavedHostOptions` 필드 추가, `validateSavedHostOptions` shape-only 검사기, 테스트 6 케이스(I7-U2-T1~T6). 사용자 승인 게이트(2-옵션 메시지).
+**Context**: 사용자 "Continue to Next Stage" 시 U2 Code Generation, "Request Changes" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U2 Functional Design 사용자 승인
+**Timestamp**: 2026-04-29T18:18:00Z
+**User Input**: "continue"
+**AI Response**: U2 FD v1.0 확정. Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u2-code-generation-plan.md`) — Step A(인터페이스/구조체) → B(host_options.go 신규) → C(iteration7_test.go 6 케이스) → D(go vet/test/race) → E(audit/checklist). 변경 파일 3건 예상. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — Build and Test 사용자 승인 (Iteration 7 종료)
+**Timestamp**: 2026-04-29T19:24:00Z
+**User Input**: "승인"
+**AI Response**: Iteration 7 Build and Test v1.0 결과 확정. Iteration 7 종료. aidlc-state.md Current Stage 갱신("ITERATION 7 완료"). Operations 단계(Chrome DevTools MCP 다중 컨텍스트 회귀: /public ↔ /public/settings 왕복 / localStorage 영속 / host:save-options 왕복)는 사용자 트리거 대기. 다음 이터레이션 후속 권장: 호스트 재접속 시 서버 측 옵션 자동 노출 protocol(host:claim ack 옵션 인클루드), `validateOptions` ↔ `validateSavedHostOptions` 통합 검토.
+**Context**: Iteration 7 완료. 산출물 경로 정리:
+- inception/requirements/iteration7-{intake-questions,requirements}.md
+- construction/plans/iteration7-{execution,u2-code-generation,u3-code-generation,u5-code-generation}-plan.md
+- construction/u2-session-persistence-announce/functional-design/iteration7-patch.md
+- construction/u3-realtime-transport/functional-design/iteration7-patch.md
+- construction/u5-web-frontend/functional-design/iteration7-patch.md
+- construction/build-and-test/iteration7-test-results.md
+코드 변경: 18 파일 (Go 4 + Web 12 + 기타 사용자 인지 가능 변경 2)
+
+---
+
+## Iteration 7 — U5 Code Generation 사용자 승인 + Build and Test 작성
+**Timestamp**: 2026-04-29T19:18:00Z
+**User Input**: "continue"
+**AI Response**: U5 Code Generation v1.0 결과 확정. 공통 Build and Test 단계 진입. `aidlc-docs/construction/build-and-test/iteration7-test-results.md` v1.0 작성 — 빌드 결과(Go/Web), 단위·통합 테스트 결과(Go 6 PASS, vitest 60 PASS), 요구사항 추적 매트릭스(FR-1~FR-6 / NFR-1~NFR-6 / AC-1~AC-8), 회귀 영향 분석(U1/U4 무영향, U2/U3/U5 변경 범위), 부수 결함 2건 수정 명시(errorCodeOf ValidationErrors / PublicView remount 가드), NFR 영향, DoD 체크리스트, Operations 후속 권장(Chrome DevTools MCP 회귀 / host:claim ack 옵션 노출 / validateOptions 통합 검토). aidlc-state.md Build and Test 항목 [x] + Current Stage 갱신. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 Iteration 7 종료, "수정" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U5 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T19:08:00Z
+**User Input**: "승인"
+**AI Response**: U5 Code Generation Plan v1.0 확정 → Step A~J 순차 실행:
+- Step A: 신규 `web/src/lib/optionsStorage.ts` — load/save/clear, 키 `mafia.options.v1`, safeLocalStorage + isPlainOptions 스키마 검사 + 페일백.
+- Step B: `web/src/types/wire.ts` — OutgoingMsg에 `host:save-options` variant 추가.
+- Step C: `web/src/context/GameContext.tsx` — `hostOptions/saveHostOptions` 노출, `useState<Options>(loadSavedOptions() ?? defaultOptions(8))` 초기화. `GameContext` export 추가(테스트 가시성).
+- Step D: 신규 `web/src/views/PublicView/HostHomeView.tsx` — 노이르 타이틀 + "♠ 게임 시작"/"⚙ 설정" 두 버튼.
+- Step E: 신규 `web/src/views/PublicView/HostSettingsView.tsx` — 9 필드 폼(숫자 7 + 체크박스 2) + 권장값 경고 + 비-호스트 가드 + "저장 후 메인으로" 단일 버튼.
+- Step F: `web/src/App.tsx` — `/public/settings` 라우트 추가.
+- Step G: `web/src/views/PublicView/PublicView.tsx` — 인라인 폼 제거, `<HostHomeView />`로 교체. 부수: host:claim useEffect 가드 강화(`!ctx.hostToken && !ctx.hostOccupied` 조건 추가) — remount 시 false-positive ACCESS DENIED 방지.
+- Step H: 신규 테스트 3 파일 — `optionsStorage.test.ts`(8) / `HostHomeView.test.tsx`(3) / `HostSettingsView.test.tsx`(4). 총 신규 15.
+- Step I: `npm install` 후 `npm run typecheck` PASS, `npm test` 60 PASS (45 baseline → 60, +15 신규), `npm run build` PASS (JS gzip 65.62 KB / +0.69 KB · CSS 3.21 KB · 예산 +3 KB 이내). `go test ./... -count=1` 6 패키지 PASS, `go build -o /tmp/mafia-game-iter7` 15 MB.
+- Step J: plan 21개 체크박스 모두 [x]. aidlc-state.md U5 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 Build and Test 단계, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U5 Functional Design 승인 + U5 Code Gen Plan 작성
+**Timestamp**: 2026-04-29T19:00:00Z
+**User Input**: "continue"
+**AI Response**: U5 FD v1.0 확정. U5 Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u5-code-generation-plan.md`) — Step A(optionsStorage 모듈) → B(OutgoingMsg variant) → C(GameContext 확장) → D(HostHomeView) → E(HostSettingsView) → F(App 라우트) → G(PublicView 분기 정리) → H(단위 테스트 7 케이스) → I(typecheck/test/build) → J(audit/state). 변경 파일 10건(신규 6 + 수정 4). 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U3 Code Generation 사용자 승인 + U5 FD 작성
+**Timestamp**: 2026-04-29T18:54:00Z
+**User Input**: "continue"
+**AI Response**: U3 Code Generation v1.0 결과 확정. U5 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u5-web-frontend/functional-design/iteration7-patch.md`) — 신규 라우트 `/public/settings`, 신규 모듈 `lib/optionsStorage.ts`(키 `mafia.options.v1`), GameContext에 `hostOptions/saveHostOptions` 노출, OutgoingMsg에 `host:save-options` variant 추가, 신규 컴포넌트 HostHomeView + HostSettingsView, PublicView 인라인 폼 제거. 영향 파일 10건(신규 6 + 수정 4) + 테스트 7 케이스(I7-U5-T1~T7). 사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U5 Code Generation Plan, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U3 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T18:46:00Z
+**User Input**: "승인"
+**AI Response**: U3 Code Generation Plan v1.0 확정 → Step A~E 순차 실행:
+- Step A: `protocol.go` — `TypeHostSaveOptions = "host:save-options"` + `hostSaveOptionsPayload` struct 추가.
+- Step B: `handlers.go` — `handleIncoming` switch case 1건 추가(`mgr.SaveHostOptions(ctx, c.HostToken, p.Options)` 위임).
+- Step C: 신규 `iteration7_test.go` — 4 통합 테스트(HappyPath / NonHost / Validation / BadJSON). 비동기 dispatch 동기화 위한 `waitForSavedHostOptions` 헬퍼 추가.
+- (부수 변경) `errorCodeOf`에 `game.ValidationErrors` 매핑 추가 — 기존 코드는 EngineError만 인식하여 ValidationErrors가 INTERNAL로 잘못 노출되던 latent 결함을 해결.
+- (U2 후속 변경) `SessionManager.SavedHostOptions() (game.Options, bool)` 공개 메서드 추가 — 외부 패키지(ws_test)에서 테스트 검증 가능 + 향후 재접속 복원 protocol 활용. `export_test.go` 제거, `iteration7_test.go(session)` 도 공개 메서드 사용으로 갱신.
+- Step D: `go vet ./...` PASS, `go test ./internal/session/... ./internal/transport/ws/... -run Iter7|Iteration7|SaveHostOptions -race` PASS, 전체 6 패키지 회귀 PASS, ws 커버리지 82.3% (≈ baseline 82.4%).
+- Step E: plan 14개 체크박스 모두 [x]. aidlc-state.md U3 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U5 Functional Design Patch, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U3 Functional Design 사용자 승인 + U3 Code Gen Plan 작성
+**Timestamp**: 2026-04-29T18:38:00Z
+**User Input**: "continue"
+**AI Response**: U3 FD v1.0 확정. U3 Code Generation Plan v1.0 작성 (`aidlc-docs/construction/plans/iteration7-u3-code-generation-plan.md`) — Step A(protocol.go 상수+payload struct) → B(handlers.go switch case) → C(iteration7_test.go 4 통합 테스트) → D(go vet/test/race/회귀) → E(audit/checklist/state). 변경 파일 3건 예상. 사용자 승인 게이트.
+**Context**: 사용자 "승인" 시 코드 생성 Part 2 실행, "수정" 시 v1.1 갱신.
+
+---
+
+## Iteration 7 — U2 Code Generation 사용자 승인 + U3 FD 진입
+**Timestamp**: 2026-04-29T18:32:00Z
+**User Input**: "continue"
+**AI Response**: U2 Code Generation v1.0 결과 확정. U3 Functional Design Patch v1.0 작성 (`aidlc-docs/construction/u3-realtime-transport/functional-design/iteration7-patch.md`) — incoming wire `host:save-options` 정의(TypeHostSaveOptions 상수 + hostSaveOptionsPayload struct), `handleIncoming` switch case 1건 추가, broadcast/dispatch 부수효과 없음, outgoing 응답 없음(에러 시 기존 error 프레임 재사용). 테스트 4 케이스(I7-U3-T1~T4) 계획. 사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U3 Code Generation Plan, "Request Changes" 시 v1.1 보정.
+
+---
+
+## Iteration 7 — U2 Code Generation Plan 승인 + 코드 생성 실행
+**Timestamp**: 2026-04-29T18:24:00Z
+**User Input**: "승인"
+**AI Response**: U2 Code Generation Plan v1.0 확정 → Step A~E 순차 실행:
+- Step A: `internal/session/session.go` — `SessionManager` 인터페이스에 `SaveHostOptions(ctx, token, opts) error` 추가, `session` 구조체에 `savedHostOptions/hasSavedHostOptions` 필드 추가.
+- Step B: 신규 `internal/session/host_options.go` — `SaveHostOptions` 구현(host token verify + shape validation + locked update) + `validateSavedHostOptions` shape-only 검사기(MaxPlayers/MafiaCount/IntroSec/DiscussionSec/Night*Seconds 8 항목).
+- Step C: 신규 `internal/session/export_test.go` (테스트 전용 `SavedHostOptionsForTest` getter) + `internal/session/iteration7_test.go` (6 케이스: NoHostToken / BadToken / ValidationFailure / PersistsAcrossSessionReset / OverwriteLatest / ConcurrentSafe).
+- Step D: `go vet ./internal/session/...` PASS, `go test ./internal/session/... -count=1 -race` PASS, 전체 `go test ./...` 6 패키지 PASS, 세션 패키지 커버리지 87.2% (baseline 86.1% → +1.1pp).
+- Step E: plan 17개 체크박스 모두 [x]. aidlc-state.md U2 섹션 갱신.
+사용자 승인 게이트(2-옵션).
+**Context**: 사용자 "Continue to Next Stage" 시 U3 Functional Design Patch, "Request Changes" 시 v1.1 보정.
+
+# =============================================================================
+# Iteration 7 — Sub-feature A: Voice 개편 (post-merge audit 추가 — 사용자 보고 후 호스트 오디오 결함 패치)
+# =============================================================================
+
+## Iteration 7 (Voice) — 사용자 추가 보고: 호스트 오디오 재생 버그 3건
+**Timestamp**: 2026-04-29T20:30:00Z
+**User Input**: "음성 관련 버그가 너무 많습니다. 1. 게임 시작시 게임 시작 오디오가 재생되지 않음 2. 게임 종료 후 재시작 시 자기소개 오디오가 재생되지 않음 3. phase.night 오디오가 재생되지 않음"
+**AI Response**: 진단 결과 두 근본 원인 확정:
+1. **GameContext 의 `state.lastAnnounce` 단일 값 effect** — React 가 다수 WS 프레임을 단일 render 로 batch 하면 마지막 announce 만 effect 에 흘러들어가고 중간 announce 들이 누락. 특히 `PhaseChanged + 후속 NightStepChanged` 처럼 같은 시점에 두 announce 가 emit 되는 경우 phase.night 가 night.mafia 에 의해 덮임.
+2. **URGENT_KINDS 인터럽트** — `PhaseChanged` 가 URGENT_KINDS 에 포함되어 game.started 직후 phase.intro URGENT 가 인터럽트해 game.started 가 잘림.
+
+수정:
+- `web/src/context/reducer.ts` — `audioCues: AudioCueQueueEntry[]` (FIFO, 64 cap) + `audioCueSeq` 추가, `applyAnnounce` 가 audioId 있으면 큐에 append. logout / room:closed 는 audioCues 비우되 seq 보존.
+- `web/src/context/GameContext.tsx` — `lastAnnounce` 단일 값 effect → `state.audioCues` ref watermark 드레인 effect 로 교체. URGENT_KINDS 분류 제거 — 모든 cue 를 FIFO enqueue.
+- `web/src/context/reducer.test.ts` — audioCues 큐 시퀀스, room:closed seq 보존, 빈 audioId graceful skip 검증 신규 3 케이스.
+
+검증: `npm test` 50/50 PASS, `npm run build` JS gzip 64.92 KB, `go test ./...` 6 패키지 PASS, `go build` 성공. 누락 mp3 3건(`intro.speaker`, `timer.10`, `timer.30`)은 graceful skip 으로 게임 무중단, 외부 녹음 발주 후속 작업.
+**Context**: 호스트 오디오 결함 3건 모두 해결. 사용자 트리거 잔여: 외부 녹음 + Chrome DevTools MCP 회귀.
+
+---
+
+## Iteration 7 (Voice) — vote.recount 와 phase.recount 중복 발화 보고
+**Timestamp**: 2026-04-29T20:45:00Z
+**User Input**: "phase.recount 와 vote.recount가 동시에 발생하는 phase 같습니다. 뭐가 다른가요?" → 후속 답변 "B"
+**AI Response**: `internal/game/tally.go` Round 1 동률 분기에서 `VoteTallied{Recount: true}` + `PhaseChanged{PhaseRecount}` 가 같은 호출에서 연속 emit → 두 한국어 안내가 거의 동시에 들리는 의미상 중복. 사용자 옵션 A/B/C 제시 → B (`phase.recount` 만 살림) 선택.
+
+수정:
+- `internal/announce/catalog_default.go` — `VoteTallied{Recount: true}` 분기를 빈 `Announcement{}` 로 변경. 의도 코멘트 추가. `cueVoteRecount` 상수 제거.
+- `internal/announce/catalog_data.go` — `msgVoteRecount` 상수 제거.
+- `internal/announce/catalog_test.go` — `recount_silent` 검증 갱신, 카탈로그 매트릭스에서 `vote.recount` 행 제거 + `VoteTallied{Recount}` 무음 단언 추가.
+
+검증: `go test ./...` 6 패키지 PASS, `go build` 성공. RECOUNT 진입 시 `phase.recount` ("결과가 같습니다. 마지막 한 번 더, 신중히 선택하시오.") 한 줄만 발화.
+**Context**: 카탈로그 정리 완료. `vote.recount.mp3` 자산은 보관됨 (catalog 가 emit 하지 않으나 파일 자체는 남김).
+
+---
+
+## Iteration 7 (Voice) — Commit & Push + PR#3 충돌 해결
+**Timestamp**: 2026-04-29T20:55:00Z
+**User Input**: "commit & push" → "PR conflict resolve 해주세요"
+**AI Response**: Commit 467381f "feat: voice overhaul to MP3 cues + host audio playback fixes (Iteration 7)" 80 files (+2240/-438). Push origin worktree-refactor+voice. GitHub PR#3 생성됨 (DIRTY/CONFLICTING — base=main).
+
+main 에는 PR#2 (`worktree-feature+main-page` Sub-feature B) 가 같은 Iteration 7 라벨로 먼저 머지되어 있어 6 파일 충돌:
+- `aidlc-docs/aidlc-state.md` (modify/modify) — Sub-feature A/B 진행 로그 분리 헤더로 통합
+- `aidlc-docs/audit.md` (modify/modify) — Sub-feature A 본문 + Sub-feature B 본문 + post-merge 추가 audit (본 항목 포함) 모두 보존
+- `aidlc-docs/construction/build-and-test/iteration7-test-results.md` (add/add) — 두 도큐먼트가 같은 파일명 사용
+- `aidlc-docs/construction/plans/iteration7-execution-plan.md` (add/add) — 동일
+- `cmd/mafia-game/web/dist/index.html` (modify/modify) — bundle hash 충돌, 재빌드로 해결 예정
+- `web/src/context/GameContext.tsx` — react import 한 줄 (useRef + useState 양쪽 모두 필요). 단순 결합으로 해결.
+**Context**: 충돌 해결 진행 중.
 
 ---

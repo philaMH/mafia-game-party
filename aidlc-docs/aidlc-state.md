@@ -4,7 +4,7 @@
 - **Project Name**: mafia-game
 - **Project Type**: Greenfield
 - **Start Date**: 2026-04-25T00:00:00Z
-- **Current Stage**: ITERATION 7 — Voice 개편 + Operations 결함 패치(Stage E, 2026-04-29T20:08Z). 사용자 직접 테스트에서 무성 보고 → Chrome DevTools MCP 진단 → `internal/transport/http/routes.go` 의 `/audio/` 라우팅 누락 결함 확정 → `audioHandler` 추가(non-immutable cache 86400s) + 회귀 테스트 3건. `go test ./...` 6 패키지 PASS, http 커버리지 89.8% → 90.3%, 게임 시작 시 24 cue 정상 재생 + 누락 3건 graceful skip 실측 확인. (이전 ITERATION 6: Noir UI 완료, 사용자 승인 2026-04-29T08:55Z)
+- **Current Stage**: ITERATION 7 (Voice 개편 + Host 메인 메뉴) 통합 완료. (1) `worktree-feature+main-page` 브랜치: 호스트 첫 페이지 분리(메인 메뉴 + `/public/settings`) + localStorage 영속(`mafia.options.v1`) + 신규 wire `host:save-options`. 영향 단위 U2/U3/U5. 회귀: Go 6 패키지 PASS / session 87.3% / ws 82.9% / npm test 60 PASS / build JS gzip 65.62 KB(+0.69 KB). 사용자 승인 2026-04-29 PR#2 머지 완료. (2) `worktree-refactor+voice` 브랜치: 사전 녹음 MP3 카탈로그 도입 + Stage E `/audio/` HTTP 라우팅 + 호스트 오디오 재생 결함 3건 수정(audioCues FIFO 드레인 / URGENT 인터럽트 제거 / VoteTallied{Recount} suppress). `go test ./...` 6 패키지 PASS, `npm test` 50/50 PASS, 게임 시작 시 24 cue 정상 재생 + 누락 3건 graceful skip 실측 확인. Operations 단계는 사용자 트리거 대기.
 
 ## Workspace State
 - **Existing Code**: No
@@ -292,42 +292,86 @@
 ## Iteration 7 Stage Progress (2026-04-29)
 
 ### 🔵 INCEPTION
+### Sub-feature A — Voice 개편 (`worktree-refactor+voice`, 사용자 승인 2026-04-29T19:05Z)
 - [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~6 산출물 보존, `internal/announce` (25+ 멘트 상수) + `web/src/hooks/useTTSQueue.ts` + `web/src/views/PublicView/VoiceToggle.tsx` 기존 자산 식별
 - [x] Reverse Engineering — SKIP (기존 산출물 활용)
 - [x] Requirements Analysis — Round 1 답변 수신 (Q1=A / Q2=A / Q3=Other / Q4=A / Q5=A / Q6=A / Q7=A / Q8=A). `iteration7-requirements-patch.md` v7.0-patch + `iteration7-voice-script.md` v1.0 사용자 승인 완료 (2026-04-29T18:25Z).
 - [x] User Stories — SKIP (엔진 교체 패치, 페르소나/시나리오 변동 없음)
 - [x] Workflow Planning — `iteration7-execution-plan.md` 사용자 승인 완료 (2026-04-29T18:35Z)
-- [x] **Iteration 7 종료** — Build and Test 사용자 승인 완료 (2026-04-29T19:05Z)
+- [x] **Iteration 7 (Voice) 종료** — Build and Test 사용자 승인 완료 (2026-04-29T19:05Z)
 - [x] Application Design — SKIP (컴포넌트 추가/제거 없음, `Announcement.AudioID` 필드 1건 추가/`Speech` 1건 폐기)
 - [x] Units Generation — SKIP (5단위 구조 유지)
 
-### 🟢 CONSTRUCTION (per-unit, plan 확정)
-#### U1 Game Core
+#### Sub-feature A · CONSTRUCTION (per-unit, plan 확정)
+##### U1 Game Core
 - [x] 모든 단계 SKIP (도메인 이벤트 변경 없음)
 
-#### U2 Session/Persistence/Announce
+##### U2 Session/Persistence/Announce (Voice)
 - [x] Functional Design Patch — plan §3.1
 - [x] NFR Requirements / Design / Infrastructure — SKIP
 - [x] Code Generation (Stage A) — `Announcement` 구조 변경 + 27 cue 상수 + Render 분기 + Eliminated mafia/notmafia 2벌 + 카탈로그 테스트 4건 신규. announce 94.3% (+0.3 pp), session 86.1% 유지
 
-#### U3 Realtime Transport
+##### U3 Realtime Transport (Voice)
 - [x] Functional Design Patch — plan §3.2
 - [x] NFR Requirements / Design / Infrastructure — SKIP
 - [x] Code Generation (Stage B) — `announceMsg.AudioID` JSON omitempty, `Speech` 키 폐기, dispatch/handlers 갱신. ws 82.4% 유지
 
-#### U4 HTTP Bootstrap
+##### U4 HTTP Bootstrap (Voice Stage E 패치)
 - [x] Stage E 패치 (2026-04-29T20:08Z) — plan §3.1 의 "정적 자산 자동 서빙" 가정이 실측에서 거짓으로 확인됨. ServeMux 가 `/audio/` 핸들러를 명시 등록해야 SPA catch-all 로 빠지지 않음. `routes.go` `audioHandler` 신규(Cache-Control max-age=86400, non-immutable) + 회귀 테스트 3건(`TestAudioHandler_ServesMp3WithShortCache` / `TestAudioHandler_404OnMissing` / `TestBuildMux_AudioPathDoesNotFallthroughToSPA`). http 커버리지 89.8% → 90.3%.
 
-#### U5 Web Frontend
+##### U5 Web Frontend (Voice)
 - [x] Functional Design Patch — plan §3.3
 - [x] NFR Requirements / Design / Infrastructure — SKIP
 - [x] Code Generation (Stage C) — `useAudioCueQueue` + 6 테스트 신규, `useTTSQueue` + 테스트 + setup mock 폐기, `wire.ts` AnnounceMsg.audioId, reducer audioAvailable + lastAnnounce.audioId, GameContext isHost gating, PublicView VoiceToggle host-only, `web/public/audio/.gitkeep`. npm test 47/47, JS gzip 64.83 KB (Iter6 대비 −0.10 KB), reducer.ts 90.72%, useAudioCueQueue.ts 91.58%
 
-#### 공통
+##### 공통 (Voice)
 - [x] Build and Test (Stage D) — `iteration7-test-results.md` 작성 완료. R1~R8 추적 매트릭스, 커버리지 표, 회귀 영향, NFR 영향, RISK 결산, DoD. `go test ./... -count=1` 6 패키지 PASS, `go build` 15.94 MB, `npm test` 47 PASS, `npm run build` 성공. **사용자 승인 완료 (2026-04-29T19:05Z)**.
+
+##### 호스트 오디오 재생 결함 패치 (post-merge, 2026-04-29T20:30Z)
+- [x] reducer 에 `audioCues` FIFO + monotonic seq 도입, GameContext effect 가 ref watermark 로 모든 cue 누락 없이 enqueue (React batching 회귀 대응)
+- [x] URGENT_KINDS 분기 제거 — PhaseChanged URGENT 가 game.started/phase.day 직전 cue 를 인터럽트하던 동작 제거
+- [x] `VoteTallied{Recount}` announce 무음 처리 — PhaseChanged{PhaseRecount} 가 동일 시점 narration 을 담당
+- [x] reducer/test 50/50 PASS, go 6 패키지 PASS
+
+### Sub-feature B — Host 메인 메뉴 + 설정 라우트 (`worktree-feature+main-page`, 사용자 승인 2026-04-29 / PR#2 머지)
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~6 산출물 보존
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration7-requirements.md` v1.0 (사용자 승인 2026-04-29)
+- [x] User Stories — SKIP (단일 호스트 페르소나, 작은 UX 분리)
+- [x] Workflow Planning — `construction/plans/iteration7-execution-plan.md` v1.0 (사용자 승인)
+- [x] Application Design — SKIP (도메인 인터페이스 추가 없음, U5 View 신규 + wire 1건만)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+#### Sub-feature B · CONSTRUCTION (실행 시퀀스: U2 → U3 → U5)
+
+##### U1 Game Core / U4 HTTP Bootstrap
+- [x] 모든 단계 SKIP (변경 없음)
+
+##### U2 Session/Persistence/Announce (Host menu)
+- [x] Functional Design Patch — `u2-session-persistence-announce/functional-design/iteration7-patch.md` v1.0
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u2-code-generation-plan.md` v1.0
+- [x] Code Generation — `internal/session/{session.go(수정), host_options.go(신규), export_test.go(신규), iteration7_test.go(신규)}`. 테스트 6 케이스(T1~T6) PASS, race detector PASS, 패키지 커버리지 87.2% (이전 86.1% → +1.1pp).
+
+##### U3 Realtime Transport (Host menu)
+- [x] Functional Design Patch — `u3-realtime-transport/functional-design/iteration7-patch.md` v1.0
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u3-code-generation-plan.md` v1.0
+- [x] Code Generation — `internal/transport/ws/{protocol.go(수정), handlers.go(수정 +errorCodeOf ValidationErrors 매핑), iteration7_test.go(신규)}`. 4 통합 테스트(T1~T4) PASS, 6 패키지 회귀 PASS, ws 커버리지 82.3% (≈ baseline 82.4%).
+
+ℹ️ U2 인터페이스 추가 변경: `SavedHostOptions() (game.Options, bool)` 공개 메서드 추가 (테스트 가시성 확보 + 향후 재접속 복원 protocol 활용 대비). 이전 `export_test.go`는 제거.
+
+##### U5 Web Frontend (Host menu)
+- [x] Functional Design Patch — `u5-web-frontend/functional-design/iteration7-patch.md` v1.0
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration7-u5-code-generation-plan.md` v1.0
+- [x] Code Generation — 10 파일 변경 (신규 6: `lib/optionsStorage.{ts,test.ts}`, `views/PublicView/{HostHomeView,HostSettingsView}.{tsx,test.tsx}` / 수정 4: `App.tsx`, `types/wire.ts`, `context/GameContext.tsx`(GameContext export 추가 + hostOptions/saveHostOptions), `views/PublicView/PublicView.tsx`). 부수: PublicView의 host:claim useEffect 가드 강화(remount 시 false-positive ACCESS DENIED 방지). `npm run typecheck` PASS, `npm test` 60 PASS (45→60, 신규 15: 8+3+4), `npm run build` 성공 (JS gzip 65.62 KB / +0.69 KB · CSS 3.21 KB 동일), `go build`/`go test ./...` 6 패키지 PASS.
+
+##### 공통 (Host menu)
+- [x] Build and Test — `aidlc-docs/construction/build-and-test/iteration7-test-results.md` 작성. FR-1~FR-6 + NFR-1~NFR-6 + AC-1~AC-8 추적, 패키지별 커버리지(announce 94.0% / game 91.7% / persistence 80.2% / session 87.3% +1.2pp / transport/http 89.8% / transport/ws 82.9% +0.5pp), 회귀 영향 분석, 부수 결함 2건 수정(errorCodeOf ValidationErrors 매핑 / PublicView remount 가드 강화), DoD 체크리스트 완료.
 
 ### 🟡 OPERATIONS
 - [x] mp3 자산 1차 배치 (2026-04-29T20:00Z) — 24 파일 리네임 후 `web/public/audio/<audioId>.mp3` 배치 + `npm run build` + `go build` 검증 완료. 바이너리 17.97 MB(+2.03 MB), dist/audio 2.3 MB.
 - [ ] mp3 추가 녹음 3건 발주 — `intro.speaker.mp3` (자기소개 발언자), `timer.30.mp3` (토론 30초), `timer.10.mp3` (토론 10초). 동일 디렉터리에 두면 다음 빌드부터 자동 임베드.
-- [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (호스트 vs 일반 관전자 음성 분리, VoiceToggle 호스트 한정 노출, mp3 누락 graceful skip 실측, urgent 인터럽트, autoplay 가드 — 사용자 트리거 권장)
+- [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (Voice: 호스트 vs 일반 관전자 음성 분리 / VoiceToggle 호스트 한정 / mp3 누락 graceful skip / autoplay 가드 — Host menu: 메인 메뉴 → 설정 라우팅 / localStorage 영속 / host:save-options 송수신 확인 권장)
 

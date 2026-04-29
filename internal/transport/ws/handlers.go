@@ -218,6 +218,15 @@ func (h *hub) handleIncoming(c *Client, typ string, raw []byte) {
 		// not block the next round of joins on the same connection.
 		h.broadcastRoomClosed()
 
+	case TypeHostSaveOptions:
+		var p hostSaveOptionsPayload
+		if err := json.Unmarshal(raw, &p); err != nil {
+			h.sendError(c, "VALIDATION_ERROR", "bad payload")
+			return
+		}
+		err := h.mgr.SaveHostOptions(ctx, c.HostToken, p.Options)
+		h.handleSubmitErr(c, err)
+
 	case TypePlayerEndSelfIntro:
 		_, err := h.mgr.SubmitAction(ctx, game.EndSelfIntro{PlayerID: c.PlayerID})
 		h.handleSubmitErr(c, err)
@@ -304,7 +313,8 @@ func (h *hub) sendError(c *Client, code, message string) {
 
 // errorCodeOf extracts a wire error code from any error returned by
 // SessionManager. Engine errors carry a typed Code we forward verbatim
-// (BR-U3-ERR-1); other errors fall back to a generic "INTERNAL".
+// (BR-U3-ERR-1); accumulated validation errors map to CodeValidation;
+// other errors fall back to a generic "INTERNAL".
 func errorCodeOf(err error) string {
 	if err == nil {
 		return ""
@@ -312,6 +322,10 @@ func errorCodeOf(err error) string {
 	var ee *game.EngineError
 	if errors.As(err, &ee) {
 		return string(ee.Code)
+	}
+	var ve game.ValidationErrors
+	if errors.As(err, &ve) {
+		return string(game.CodeValidation)
 	}
 	return "INTERNAL"
 }

@@ -44,6 +44,22 @@ type SessionManager interface {
 	// invalid; clients receive a room:closed event and must rejoin.
 	HostCloseRoom(ctx context.Context, token HostToken) error
 
+	// SaveHostOptions stores the host-supplied game options for later use
+	// (Iteration 7). The token MUST match the currently-claimed GM seat.
+	// The shape of opts is validated lightly (positive numbers, ranges
+	// within the documented bounds); deeper invariants (mafia/citizen
+	// ratio against actual player count) remain enforced by Engine.Start
+	// at game-start time. Saved options survive Session resets caused
+	// by HostCloseRoom so the host can reopen with the same configuration.
+	SaveHostOptions(ctx context.Context, token HostToken, opts game.Options) error
+
+	// SavedHostOptions returns the most recently saved host options if any
+	// have been saved this process lifetime. The bool is false when
+	// SaveHostOptions has never succeeded. The configuration is not
+	// considered sensitive (game-balance knobs only) so the read is
+	// unauthenticated. Returned value is a copy.
+	SavedHostOptions() (game.Options, bool)
+
 	// Snapshot returns a deep copy of the engine's current state, taken
 	// under the GM lock. Callers (e.g., U3 WSHub for VisRoleMafia routing)
 	// may use it without their own synchronization. Returns the zero
@@ -81,6 +97,12 @@ type session struct {
 	systemMsg []announce.Announcement // pending system toasts (delivered with next dispatch)
 
 	hostAuth *hostAuthority // Iteration 2 — GM seat lock
+
+	// Iteration 7 — host-supplied options entered via the settings screen
+	// (FR-5/FR-6). Survives Session resets in HostCloseRoom because it
+	// lives on session, not Session. Mutation is guarded by mu.
+	savedHostOptions    game.Options
+	hasSavedHostOptions bool
 }
 
 // handlerEntry pairs a Subscribe id with its callback so that

@@ -201,6 +201,7 @@ export type OutgoingMsg =
   | { type: "subscribe-public" }
   | { type: "host:claim" }
   | { type: "host:open-room"; options: Options }
+  | { type: "host:save-options"; options: Options }
   | { type: "host:start-room" }
   | { type: "host:terminate-room" }
   | { type: "host:close-room" }

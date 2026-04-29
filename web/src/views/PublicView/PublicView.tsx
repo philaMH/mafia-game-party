@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { ConnectionBadge } from "../../components/ConnectionBadge";
 import { ToastList } from "../../components/ToastList";
 import { useGameContext } from "../../context/GameContext";
-import { defaultOptions, type Options } from "../../types/wire";
 
 import { HostControls } from "./HostControls";
+import { HostHomeView } from "./HostHomeView";
 import { PauseBadge } from "./PauseBadge";
 import { PhaseHeader } from "./PhaseHeader";
 import { PlayersGrid } from "./PlayersGrid";
@@ -61,11 +61,15 @@ const FullScreenSection = ({ children }: { children: React.ReactNode }) => (
 
 export function PublicView() {
   const ctx = useGameContext();
-  const [opts, setOpts] = useState<Options>(() => defaultOptions(8));
   const [claimSent, setClaimSent] = useState(false);
 
   useEffect(() => {
-    if (ctx.status === "connected" && !claimSent) {
+    // Iteration 7: PublicView remounts when the host navigates back from
+    // /public/settings. Only claim once per WS lifetime — if we already
+    // hold a hostToken (or the seat is otherwise occupied) skip the
+    // re-claim to avoid the room:host-occupied false-positive that would
+    // boot the rightful host into the ACCESS DENIED screen.
+    if (ctx.status === "connected" && !claimSent && !ctx.hostToken && !ctx.hostOccupied) {
       ctx.send({ type: "subscribe-public" });
       ctx.send({ type: "host:claim" });
       setClaimSent(true);
@@ -132,61 +136,7 @@ export function PublicView() {
             </div>
           </FullScreenSection>
         ) : ctx.hostToken && !ctx.roomOpened ? (
-          <FullScreenSection>
-            <div className="eyebrow">ROOM SETUP · 방 개설</div>
-            <h1 className="mafia-title stone sm">MAFIA</h1>
-            <div className="mafia-sub" style={{ fontSize: "0.95rem", marginTop: 0 }}>
-              마 피 아 게 임
-            </div>
-            <div
-              className="gold-frame"
-              style={{ padding: "1.5rem 2rem", display: "flex", flexDirection: "column", gap: "1rem", minWidth: "22rem" }}
-            >
-              <div className="eyebrow">GAME OPTIONS · 설정</div>
-              <label
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", color: "var(--paper-2)" }}
-              >
-                <span>최대 참여 인원</span>
-                <input
-                  className="noir-input noir-number"
-                  type="number"
-                  min={6}
-                  max={12}
-                  value={opts.maxPlayers}
-                  onChange={(e) => setOpts({ ...opts, maxPlayers: Number(e.target.value) })}
-                />
-              </label>
-              <label
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", color: "var(--paper-2)" }}
-              >
-                <span>마피아 수</span>
-                <input
-                  className="noir-input noir-number"
-                  type="number"
-                  min={1}
-                  max={Math.max(1, opts.maxPlayers - 3)}
-                  value={opts.mafiaCount}
-                  onChange={(e) => setOpts({ ...opts, mafiaCount: Number(e.target.value) })}
-                />
-              </label>
-              {Math.abs(opts.mafiaCount - defaultOptions(opts.maxPlayers).mafiaCount) > 1 && (
-                <span
-                  className="serif"
-                  style={{ color: "var(--warn)", fontSize: "0.85rem", fontStyle: "italic" }}
-                >
-                  ※ 권장하지 않는 설정입니다
-                </span>
-              )}
-              <div className="divider-gold" />
-              <button
-                type="button"
-                className="btn-noir primary lg"
-                onClick={() => ctx.send({ type: "host:open-room", options: opts })}
-              >
-                ♠ 방 개설
-              </button>
-            </div>
-          </FullScreenSection>
+          <HostHomeView />
         ) : !ctx.state ? (
           <FullScreenSection>
             <div className="eyebrow">STANDBY · 대기</div>

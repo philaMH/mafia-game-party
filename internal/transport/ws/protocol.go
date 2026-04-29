@@ -41,6 +41,9 @@ const (
 	// Iteration 5 (R4): host pause/resume controls.
 	TypeHostPause  = "host:pause"
 	TypeHostResume = "host:resume"
+
+	// Iteration 7 (FR-5): host pre-save game options before opening a room.
+	TypeHostSaveOptions = "host:save-options"
 )
 
 // Outgoing (server → client):
@@ -188,6 +191,12 @@ type errorMsg struct {
 // Iteration 2 messages.
 
 type hostOpenRoomPayload struct {
+	Type    string       `json:"type"`
+	Options game.Options `json:"options"`
+}
+
+// Iteration 7 — host:save-options pre-save payload.
+type hostSaveOptionsPayload struct {
 	Type    string       `json:"type"`
 	Options game.Options `json:"options"`
 }
