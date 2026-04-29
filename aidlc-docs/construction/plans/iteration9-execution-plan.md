@@ -1,228 +1,168 @@
-# Iteration 9 — 실행 계획 v1.0
+# Iteration 9 — Workflow Execution Plan v1.0
 
-| 항목 | 내용 |
+**Status**: Draft v1.0 — 사용자 승인 대기
+**Source**: `aidlc-docs/inception/requirements/iteration9-bug-safari-reload-requirements.md` v1.0 (사용자 승인 2026-04-29T23:55Z)
+**Branch**: `worktree-bug+safari`
+**Type**: Bug Fix (Frontend · WebSocket Lifecycle)
+**Risk**: Low · 단일 hook (`web/src/hooks/useWebSocket.ts`) 보강 + 신규 단위 테스트
+
+---
+
+## 1. 추천 실행 시퀀스 개요
+
+```
+INCEPTION (완료)
+   ├─ Workspace Detection ✓
+   ├─ Reverse Engineering — SKIP
+   ├─ Requirements Analysis ✓ (사용자 승인 2026-04-29T23:55Z)
+   ├─ User Stories — SKIP
+   ├─ Workflow Planning ⟵ (현재)
+   ├─ Application Design — SKIP
+   └─ Units Generation — SKIP
+
+CONSTRUCTION (단일 단위 — U5)
+   ├─ Phase A — U5 Functional Design Patch (사용자 승인 게이트)
+   ├─ Phase B — U5 Code Generation Plan (사용자 승인 게이트)
+   ├─ Phase C — U5 Code Generation (실행 + 사용자 승인 게이트)
+   └─ Phase D — Build & Test (test-results.md 작성 + 사용자 최종 승인 게이트)
+
+OPERATIONS
+   └─ iOS Safari 실기 회귀 (사용자 트리거 — placeholder)
+```
+
+U1 / U2 / U3 / U4 모두 SKIP — 도메인 로직, 서버 protocol, HTTP 라우팅 변경 없음.
+NFR Requirements / Design / Infrastructure / Application Design / Units Generation 모두 SKIP — 본 결함 범위에서 가치 없음.
+
+---
+
+## 2. Phase 별 상세
+
+### Phase A — U5 Functional Design Patch
+
+**필요한 산출물**
+- `aidlc-docs/construction/u5-web-frontend/functional-design/iteration9-patch.md` v1.0 (Minimal patch)
+  - §1. 변경 의도 — alternation 패턴의 BFCache + 직전 close 미완료 가설 명시
+  - §2. `useWebSocket` 라이프사이클 변경 표 — pagehide / pageshow 핸들러 신설, onclose race 가드 2건
+  - §3. 코드 구조 다이어그램 (간단 ASCII — connect closure, abandoned flag, 리스너 등록/해제)
+  - §4. wire/server 변경 없음 명시
+  - §5. 테스트 케이스 표 (I9-W1~W5)
+
+**완료 메시지** (2-옵션 게이트)
+- "Continue to Next Stage" → Phase B 진입
+- "Request Changes" → FD v1.1 보정
+
+---
+
+### Phase B — U5 Code Generation Plan
+
+**필요한 산출물**
+- `aidlc-docs/construction/plans/iteration9-u5-code-generation-plan.md` v1.0
+  - Step A — `useWebSocket.ts` connect closure 안에 `let abandoned = false` 도입, cleanup 시 `abandoned = true`
+  - Step B — onclose 에 `if (abandoned) return;` 가드 + `wsRef.current === ws` 가드 (`wsRef.current = null` 조건부)
+  - Step C — `pagehide` 리스너 등록 (`window.addEventListener("pagehide", onPageHide)`) + cleanup 해제
+  - Step D — `pageshow` 리스너 등록 + `event.persisted === true` 분기 처리 + cleanup 해제
+  - Step E — 신규 `web/src/hooks/useWebSocket.test.ts` (I9-W1~W5 5 케이스, jsdom + vitest mock WebSocket)
+  - Step F — 검증: `npm run typecheck`, `npm test`, `npm run build`, `go build ./cmd/mafia-game` (정적 자산 임베드 갱신)
+  - Step G — audit.md / aidlc-state.md 갱신
+
+**완료 메시지** (2-옵션 게이트)
+- "Continue to Next Stage" → Phase C 진입
+- "Request Changes" → CG Plan v1.1 보정
+
+---
+
+### Phase C — U5 Code Generation
+
+**코드 변경 파일** (예상 2건)
+1. `web/src/hooks/useWebSocket.ts` — 라이프사이클 보강 (FR-1~FR-4)
+   - 단일 useEffect 안에서:
+     - `let abandoned = false`
+     - 기존 connect() 로직 보존 (URL dial, ws.onopen → resume, ws.onmessage → dispatch, ws.onclose → backoff, ws.onerror)
+     - onclose 첫 가드: `if (abandoned) return;` (cleanup 후 늦은 close 무시)
+     - `wsRef.current = null` → `if (wsRef.current === ws) wsRef.current = null;`
+     - 신규 `onPageHide` 핸들러 — `wsRef.current?.close(1000, "pagehide")` (try/catch swallow)
+     - 신규 `onPageShow` 핸들러 — `if (e.persisted) window.location.reload()`
+     - `window.addEventListener("pagehide", onPageHide)` / `window.addEventListener("pageshow", onPageShow)`
+     - cleanup 에서 `abandoned = true` 설정 + 두 리스너 `removeEventListener` + 기존 `wsRef.current.close()` 보존
+2. `web/src/hooks/useWebSocket.test.ts` (신규) — I9-W1~W5 5 케이스
+   - 공통 setup: jsdom + vitest, `globalThis.WebSocket` 을 fake WebSocket 클래스로 stub (open/close/send/onopen/onmessage/onclose 트래킹)
+   - I9-W1: `pagehide` 디스패치 시 stub WS 의 close(1000, "pagehide") 가 정확히 1회 호출됨
+   - I9-W2: `pageshow` (persisted=true) 디스패치 시 `window.location.reload` 가 1회 호출됨 (`vi.spyOn(window.location, 'reload')` 또는 location 객체 mock)
+   - I9-W3: `pageshow` (persisted=false) 디스패치 시 reload 미호출
+   - I9-W4: 새 conn 생성 후 직전 conn 의 onclose 가 늦게 발화해도 `wsRef` 가 새 conn 을 가리키고, send 가 새 conn 으로 라우팅됨
+   - I9-W5: hook unmount(=cleanup) 후 stub WS 의 onclose 를 임의로 발화시켜도 reconnect timer 스케줄되지 않음
+
+**Step A~G 체크리스트** (Code Generation Plan 본문에 그대로 옮길 항목)
+- [ ] Step A — connect closure 안 `abandoned` flag 도입 + cleanup 에서 toggle
+- [ ] Step B — onclose race 가드 2건 (`abandoned` / `wsRef === ws`)
+- [ ] Step C — `pagehide` 리스너 등록/해제
+- [ ] Step D — `pageshow` 리스너 등록/해제 + `event.persisted` 분기
+- [ ] Step E — `useWebSocket.test.ts` 신규 5 케이스
+- [ ] Step F — `npm run typecheck` PASS, `npm test` PASS (66 → 71), `npm run build` 성공 (JS gzip ±1 KB), `go build` 성공
+- [ ] Step G — audit.md / aidlc-state.md 갱신
+
+**완료 메시지** (2-옵션 게이트)
+- "Continue to Next Stage" → Phase D 진입
+- "Request Changes" → 동일 Phase 내 v1.1 보정
+
+---
+
+### Phase D — Build & Test
+
+**필요한 산출물**
+- `aidlc-docs/construction/build-and-test/iteration9-test-results.md` v1.0
+  - FR-1~FR-5 추적 매트릭스
+  - 패키지별 회귀 결과 (announce / game / persistence / session / transport/http / transport/ws — 변경 없음 회귀 확인)
+  - U5 테스트 결과 (66 → 71 PASS, 신규 useWebSocket.ts 라인 커버리지)
+  - JS gzip 빌드 사이즈 표 (baseline 65.62 KB 대비 ±1 KB)
+  - Go 바이너리 사이즈 (baseline 17.97 MB 대비)
+  - NFR 영향 정리 (Compat / Perf / Build / Test 표에 ✓ 마킹)
+  - DoD 체크리스트
+  - 후속 권장 사항: iOS Safari 실기 회귀 (사용자 트리거)
+
+**검증**
+- [ ] `npm run typecheck` PASS
+- [ ] `npm test` 71 PASS (신규 5건 포함)
+- [ ] `npm run build` 성공
+- [ ] `go test ./... -count=1 -race` 6 패키지 PASS (서버 변경 없음, 회귀 확인)
+- [ ] `go build -o /tmp/mafia-game-iter9 ./cmd/mafia-game` 성공
+
+**완료 메시지**: "**Build and test results v1.0 complete. Ready to close Iteration 9?**" → 사용자 승인 후 Iteration 9 종료, OPERATIONS placeholder 로 이동.
+
+---
+
+## 3. SKIP 단계 사유
+
+| 단계 | 사유 |
 |---|---|
-| 작성 | 2026-04-30T00:45:00Z |
-| 트리거 | 결함 보고 — 결과 발표 직후 EndScreen 즉시 전환 |
-| 영향 단위 | U1 (실코드 변경) · U2/U3/U5 (회귀 테스트만) · U4 (변경 없음) |
-| 작업 브랜치 | `worktree-fix+final-result` |
+| Reverse Engineering | 기존 Iteration 1~8 산출물 활용, 5단위 구조 변동 없음 |
+| User Stories | 단일 결함 패치 — 페르소나/시나리오 추가 없음 |
+| Application Design | 컴포넌트 추가/제거 없음 — 단일 hook 보강 |
+| Units Generation | 5단위 구조 유지 |
+| NFR Requirements / NFR Design | 성능/보안/확장성 변경 없음 — 리스너 2건 추가 |
+| Infrastructure Design | 단일 바이너리, 인프라 변경 없음 |
+| U1 Game Core | 도메인 로직 변경 없음 |
+| U2 Session/Persistence/Announce | 서버측 protocol/세션 변경 없음 |
+| U3 Realtime Transport | wire/server WS 핸들러 변경 없음 |
+| U4 HTTP Bootstrap | HTTP 라우팅/캐시 헤더 변경 없음 |
 
 ---
 
-## 1. Detailed Analysis Summary
+## 4. RISK 정리
 
-### 1.1 Change Impact Assessment
-- **User-facing changes**: Yes — VOTE/NIGHT 결판 직후 EndScreen 전환 직전에 5초 결과 자막 노출.
-- **Structural changes**: No — Phase 추가 없음. State 에 신규 옵셔널 필드 1건 (`PendingGameEnd`) 추가.
-- **Data model changes**: 위 1건 (Go struct + 스냅샷 호환). 와이어/TS 측 변경 불필요 (서버 내부 전이 상태).
-- **API changes**: 없음. WebSocket 프로토콜/REST 동일.
-- **NFR impact**: 미미 — Tick 1 비교, 메모리 +24 byte/방 (deadline+winner+reason).
-
-### 1.2 Component Relationships
-- **Primary**: `internal/game/{types,end,tally,resolve_night,handlers_lifecycle,tick,state_clone}.go`
-- **테스트만 영향 가능**: `internal/game/{end_test,tally_test,resolve_night_test,handlers_day_vote_test,handlers_lifecycle_test,scenario_test}.go` 등 시나리오 GameEnded 즉시 emission 가정 케이스
-- **간접 영향 검증**: `internal/announce` 카탈로그(end.* cue 동작 그대로), `internal/transport/ws` (GameEnded 와이어 그대로), `web/src/context/reducer.ts` (GameEnded 처리 그대로)
-
-### 1.3 Risk Assessment
-- **Risk Level**: Low
-- **Rollback Complexity**: Easy — `PendingGameEnd` nil 이면 기존 즉시 emit 동작과 동일 (역호환 절차 가능)
-- **Testing Complexity**: Moderate — 다수 기존 시나리오 테스트가 GameEnded 즉시 emission 을 가정하므로 헬퍼 함수 1개 추가 + 케이스 5~6 종 보강
-
----
-
-## 2. Workflow Visualization
-
-```mermaid
-flowchart TD
-    Start(["Iter9 결함 보고"])
-
-    subgraph INCEPTION["🔵 INCEPTION PHASE"]
-        WD["Workspace Detection<br/><b>COMPLETED</b>"]
-        RE["Reverse Engineering<br/><b>SKIP</b>"]
-        RA["Requirements Analysis<br/><b>COMPLETED</b>"]
-        US["User Stories<br/><b>SKIP</b>"]
-        WP["Workflow Planning<br/><b>EXECUTE</b>"]
-        AD["Application Design<br/><b>SKIP</b>"]
-        UG["Units Generation<br/><b>SKIP</b>"]
-    end
-
-    subgraph CONSTRUCTION["🟢 CONSTRUCTION PHASE"]
-        FD_U1["U1 Functional Design<br/><b>EXECUTE</b>"]
-        CG_U1["U1 Code Generation<br/><b>EXECUTE</b>"]
-        BT["Build and Test<br/><b>EXECUTE</b>"]
-    end
-
-    subgraph OPERATIONS["🟡 OPERATIONS PHASE"]
-        OPS["Chrome DevTools 회귀<br/><b>SUGGESTED</b>"]
-    end
-
-    Start --> WD --> RA --> WP --> FD_U1 --> CG_U1 --> BT --> OPS
-
-    style WD fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style RA fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style WP fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style FD_U1 fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
-    style CG_U1 fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style BT fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style RE fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style US fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style AD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style UG fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style OPS fill:#FFF59D,stroke:#F57F17,stroke-width:3px,stroke-dasharray: 5 5,color:#000
-    style INCEPTION fill:#BBDEFB,stroke:#1565C0,stroke-width:3px,color:#000
-    style CONSTRUCTION fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000
-    style OPERATIONS fill:#FFF59D,stroke:#F57F17,stroke-width:3px,color:#000
-    style Start fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#000
-
-    linkStyle default stroke:#333,stroke-width:2px
-```
-
----
-
-## 3. 단위별 실행 결정 (Phases to Execute / Skip)
-
-### 🔵 INCEPTION
-- [x] Workspace Detection — COMPLETED
-- [x] Reverse Engineering — SKIP (기존 산출물 활용)
-- [x] Requirements Analysis — COMPLETED (`iteration9-fix-final-result-requirements.md` v1.0)
-- [x] User Stories — SKIP (단일 결함 패치, 페르소나/스토리 변동 없음)
-- [x] Workflow Planning — IN PROGRESS (본 문서)
-- [ ] Application Design — **SKIP** — 컴포넌트/서비스 추가 없음, State 필드 1건 + 함수 1~2개만 추가
-- [ ] Units Generation — **SKIP** — 5단위 구조 유지
-
-### 🟢 CONSTRUCTION
-
-#### U1 Game Core — EXECUTE 전체
-- [ ] Functional Design Patch — `aidlc-docs/construction/u1-game-core/functional-design/iteration9-patch.md`
-- [ ] NFR Requirements — SKIP (기존 NFR 충족, 신규 요구 없음)
-- [ ] NFR Design — SKIP
-- [ ] Infrastructure Design — SKIP
-- [ ] Code Generation Plan — `aidlc-docs/construction/plans/iteration9-u1-code-generation-plan.md`
-- [ ] Code Generation — Step A~F (아래 §5)
-
-#### U2 Session/Persistence/Announce — SKIP
-- [ ] 모든 단계 SKIP — 카탈로그 분기 변경 없음 (`Eliminated` / `DeathAnnounced` / `PeacefulNight` cue 그대로). `BuildPrivateView` 도 변경 없음 — `PendingGameEnd` 는 와이어로 노출 전제 X 이므로 view 마스킹 추가 불필요.
-
-#### U3 Realtime Transport — SKIP
-- [ ] 모든 단계 SKIP — `GameEnded` 와이어 직렬화 동일. `PendingGameEnd` 는 서버 내부 상태로 클라이언트 무관.
-
-#### U4 HTTP Bootstrap — SKIP
-- [ ] 모든 단계 SKIP — 변경 없음.
-
-#### U5 Web Frontend — SKIP
-- [ ] 모든 단계 SKIP — `GameEnded` 가 늦게 도착하므로 reducer 가 자연스럽게 늦게 phase=END 로 전환. SubtitleArea 는 마지막 announce 를 그대로 5초 더 표시 (기존 동작).
-
-#### 공통
-- [ ] Build and Test — `aidlc-docs/construction/build-and-test/iteration9-test-results.md` 작성
-
-### 🟡 OPERATIONS
-- [ ] Chrome DevTools MCP 회귀 권장 (호스트 + 4 player) — VOTE 결판 / NIGHT 결판 / Pause-Resume 시 EndScreen 지연 / HOST_FORCE_END 즉시 전환 4 시나리오. 사용자 트리거 권장.
-
----
-
-## 4. U1 Functional Design Patch 개요 (Phase A 결정 사항)
-
-### 4.1 신규 자료형
-```go
-// PendingGameEnd holds the deferred GameEnded payload while the engine
-// keeps the previous phase visible for FR-2 (5s 결과 자막 노출).
-//
-// 비어있을 때(=nil) 엔진은 즉시-종료 모드로 동작 (HOST_FORCE_END 등). 
-// scheduleGameEnd 가 호출되면 즉시 emit 대신 본 필드에 보관하고
-// Tick 이 deadline 도달 시점에 endGame 을 발행한다.
-type PendingGameEnd struct {
-    Reason   EndReason `json:"reason"`
-    Winner   *Team     `json:"winner,omitempty"` // HOST_FORCE_END 의 nil 도 포함
-    Deadline time.Time `json:"deadline"`
-}
-```
-
-### 4.2 State 변경
-- `State.PendingGameEnd *PendingGameEnd `json:"pendingGameEnd,omitempty"`` 추가.
-- `state_clone.go::Clone` 에서 PendingGameEnd 깊은 복사.
-
-### 4.3 신규 상수
-```go
-const defaultFinalResultBufferSeconds = 5
-```
-
-### 4.4 신규 / 변경 함수
-- **(신규)** `engine.scheduleGameEnd(reason EndReason, winner Team)` — `state.PendingGameEnd` 를 `{reason, winner, e.clock.Now() + buffer}` 로 채우고 빈 슬라이스 반환. State.Phase 는 호출 시점 그대로.
-- **(변경)** `tally.applyElimination`: `checkEnd()` 가 true 면 `endEv` 를 그대로 append 하지 않고, `e.scheduleGameEnd(reason, winner)` 호출 후 `transitionVoteToNight` 호출도 생략 (Phase=VOTE/RECOUNT 유지). 단 `Eliminated` 이벤트는 그대로 emit.
-  - 구현 디테일: `checkEnd` 의 시그니처를 유지하되 internal helper `e.evaluateEnd() (EndReason, Team, bool)` 를 추출하여 endGame 호출 없이 결과만 반환하게 한다 (또는 `tally`/`resolveNight` 가 직접 `LiveMafiaCount` 등으로 판정 후 schedule 호출). 가장 작은 변경: helper 추가.
-- **(변경)** `resolve_night.resolveNight`: `checkEnd()` 가 true 면 동일하게 `scheduleGameEnd` 호출. Phase=DAY (이미 전이 완료) 유지. `Deadline` (DAY discussion deadline) 은 그대로 두지만, Tick 의 PendingGameEnd 처리가 먼저 발화된다.
-- **(변경)** `tick.Tick`: `if e.state.Paused` 와 `if !now.After(LastTickAt)` 가드 다음 첫 분기로 `if e.state.PendingGameEnd != nil && !now.Before(e.state.PendingGameEnd.Deadline) { return e.firePendingEnd(now) }` 삽입.
-- **(신규)** `engine.firePendingEnd(now)` — `endGame(reason, winner)` 호출 (State.Phase=PhaseEnd, Winner/EndReason 세팅, GameEnded emit), `state.PendingGameEnd = nil`, `state.LastTickAt = now`. HOST_FORCE_END 처럼 Winner 가 nil 인 경우 `endGame` 시그니처를 유지하기 위해 별도 `endGameForce` 또는 `endGameWithNilWinner` 분기 추가는 본 패치 범위 밖 (Q5=A — 강제 종료는 buffer 미적용이라 PendingGameEnd 에는 절대 force-end 가 들어오지 않음).
-- **(변경)** `handlers_lifecycle.handleEndGame` (`HostEndGame`): 변경 없음 — 즉시 emit 동작 보존. 단, 호출 시 `state.PendingGameEnd = nil` 클리어 (자연 결판 직후 호스트가 force-end 한 corner case 대비).
-- **(변경)** `handlers_lifecycle.canPause`: `PendingGameEnd != nil` 이면 phase 무관 true 반환.
-- **(변경)** `handlers_lifecycle.handleResumeGame`: 기존 phase별 deadline shift 로직 직후, `if e.state.PendingGameEnd != nil { e.state.PendingGameEnd.Deadline = e.state.PendingGameEnd.Deadline.Add(shift) }` 추가.
-
-### 4.5 동작 시퀀스 (예시: AC-1 시민 승리)
-
-```
-T+0.0s  player vote ... → all voted → tally
-        events: VoteTallied(eliminated=mafia), Eliminated(mafia)
-        scheduleGameEnd(CITIZEN_WIN, TeamCitizen) → state.PendingGameEnd.Deadline = T+5s
-        (state.Phase 는 PhaseVote 그대로)
-T+0.0s  client reducer: lastAnnounce = "○○○이(가) 마피아였습니다."
-        audioCues: [eliminated.mafia]
-T+0.5s  cue eliminated.mafia 재생 시작
-T+3.0s  cue 재생 종료, 자막 유지
-T+5.0s  서버 Tick(now=T+5.0s): PendingGameEnd.Deadline 도달 → firePendingEnd
-        events: GameEnded(winner=CITIZEN, reason=CITIZEN_WIN, reveal=...)
-        클라이언트: state.phase=END → EndScreen 노출, audioCues+=[end.citizen]
-```
-
-### 4.6 호환성 / 회귀 영향
-- 기존 `internal/game/end_test.go::TestEngine_GameEndsWhenAllMafiaEliminated` 등은 단일 batch 에서 `Eliminated + GameEnded` 를 기대 → 신규 헬퍼 `tickFor(s)` (또는 `clock.Advance(5s); engine.Tick(...)`) 호출 1회 추가로 마이그레이션.
-- `BuildPrivateView` 변경 없음 — `PendingGameEnd` 는 클라이언트가 무시.
-
----
-
-## 5. U1 Code Generation Plan 개요 (Step A~F)
-
-| Step | 작업 |
+| RISK | 완화책 |
 |---|---|
-| A | `types.go` — `PendingGameEnd` struct + State 필드 추가 + `defaultFinalResultBufferSeconds = 5` 상수 |
-| B | `state_clone.go` — Clone 깊은 복사 |
-| C | `end.go` — `scheduleGameEnd(reason, winner)` 신규 + `firePendingEnd(now)` 신규. 기존 `checkEnd` 시그니처 유지하되 internal `evaluateEnd()` helper 분리(선택) |
-| D | `tally.go` (`applyElimination`) — `checkEnd` true 분기를 `scheduleGameEnd` 로 치환 |
-| E | `resolve_night.go` (`resolveNight`) — 동일하게 `scheduleGameEnd` 로 치환 |
-| F | `tick.go` (`Tick`) — Paused/LastTickAt 가드 직후 `PendingGameEnd` 만료 체크 + `firePendingEnd` |
-| G | `handlers_lifecycle.go` — `canPause` PendingGameEnd 분기, `handleResumeGame` deadline shift, `handleForceEnd` 의 PendingGameEnd 클리어 |
-| H | 신규 `iteration9_test.go` — 6 케이스: Vote-end buffer, Night-end buffer (death), Night-end buffer (peaceful 가정), Pause/Resume mid-buffer, HOST_FORCE_END mid-buffer 클리어, Snapshot resume mid-buffer |
-| I | 기존 시나리오 테스트 마이그레이션 — `end_test.go` / `scenario_test.go` 등 GameEnded 가 즉시 같은 batch 에 오기를 기대하는 케이스 4~6 건에 5초 advance + Tick 호출 추가 |
-
-각 Step 완료 후 `go vet ./...` + `go test ./internal/game/... -race -count=1` 통과를 검증한다.
+| jsdom 에 WebSocket native 미존재 | vitest test 안에서 fake WebSocket class 를 globalThis 에 주입. 기존 `useAudioCueQueue.test.ts` 가 유사 stub 패턴을 사용하므로 참고. |
+| `window.location.reload` 가 jsdom 에서 navigation 을 트리거하여 테스트 환경을 깨뜨릴 수 있음 | `Object.defineProperty(window, 'location', { value: { reload: vi.fn(), ... } })` 또는 `vi.spyOn(window.location, 'reload')` 로 mock. 실제 navigation 발생하지 않도록. |
+| `pageshow` event.persisted 가 jsdom 에서 자동으로 false | 수동으로 `Object.defineProperty(event, 'persisted', { value: true })` 후 dispatchEvent. 또는 PageTransitionEvent 생성. |
+| StrictMode dev double-mount 와 abandoned flag 의 상호작용 | abandoned flag 는 connect closure scope 라 mount 별 독립. cleanup 후 다음 mount 의 connect 는 새 closure → 영향 없음. 검증은 I9-W5 회귀로 갈음. |
+| pagehide 시 close 가 send buffer 에 있는 message 를 끊는 부수효과 | code 1000 (Normal Closure) + reason "pagehide" 사용 → 서버는 graceful close 로 처리, 토큰 무효화 없음. token resume 으로 다음 페이지 자동 복원. |
+| `window.location.reload` 가 BFCache 무한 루프를 일으킬 가능성 | reload 는 `event.persisted === true` (BFCache 복원) 케이스에서만 호출. reload 후에는 BFCache 가 아닌 fresh navigation 이므로 다음 pageshow 는 persisted=false → 무한 루프 없음. |
 
 ---
 
-## 6. Build & Test (공통)
+## 5. 변경 이력
 
-| 검증 | 도구 | 게이트 |
+| 버전 | 일자 | 변경 |
 |---|---|---|
-| Go 회귀 | `go test ./... -count=1 -race` | 6 패키지 PASS |
-| Go 빌드 | `go build -o /tmp/mafia-game-iter9 ./cmd/mafia-game` | 성공 |
-| Frontend | `npm test` | 66 PASS 유지 |
-| Frontend 빌드 | `npm run build` | gzip 65.62 KB ± 노이즈 |
-| 커버리지 | `go test ./internal/game/... -cover` | game 패키지 ≥ 91.8% (Iter8 baseline) |
-
-`aidlc-docs/construction/build-and-test/iteration9-test-results.md` 에 FR-1~FR-8 추적 매트릭스, 패키지별 커버리지, 회귀 영향 분석, NFR 영향, AC-1~AC-6 검증 결과 기록 → 사용자 최종 승인 게이트.
-
----
-
-## 7. Estimated Timeline / Success Criteria
-
-- **Total Stages**: 4 (Workflow Planning · U1 Functional Design · U1 Code Generation · Build and Test)
-- **Estimated Duration**: 1 세션 (Plan 5분 / FD 5분 / CodeGen 30분 / Build & Test 10분)
-- **Success Criteria**:
-  - AC-1~AC-6 모두 통과 (테스트로 검증)
-  - 기존 67 Go 테스트 + 66 npm 테스트 PASS
-  - `defaultFinalResultBufferSeconds = 5` 동작 일관성 확인
-  - 호스트 PublicView 가 결과 자막을 5초 노출 후 EndScreen 전환 (수동 회귀로 OPERATIONS 단계에서 확인 권장)
-
----
-
-## 8. 사용자 승인 게이트
-
-본 plan 승인 시 → U1 Functional Design Patch 작성으로 진입.
+| v1.0 | 2026-04-29 | 최초 작성, RA v1.0 사용자 승인 후 |

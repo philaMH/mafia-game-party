@@ -1791,6 +1791,106 @@ main 에는 PR#2 (`worktree-feature+main-page` Sub-feature B) 가 같은 Iterati
 
 ---
 
+## Iteration 9 — Bug · iOS Safari 새로고침 시 연결 실패 (개시)
+**Timestamp**: 2026-04-29T23:45:00Z
+**User Input**: "휴대폰 safari에서 접속 시 새로고침 1회 시 연결이 되지 않는 문제가 있습니다. 2회 째는 연결이 되었다가 다시 새로고침하면 연결이 다시 되지 않습니다."
+**AI Response**: 원인 가설 3건 제시 — (1) iOS Safari BFCache 복원 시 `pageshow`/`pagehide` 리스너 부재로 좀비 WebSocket 참조 미감지, (2) 페이지 unload 전 `ws.close()` 비동기 미완료로 직전 TCP FIN 미송출 + iOS 네트워크 스택의 동일 origin 직렬화로 새 WS 지연/실패, (3) `useWebSocket.ts:68` onclose 의 `wsRef.current = null` 가 race 시 새 ref 를 nul 로 덮어씀. 영향 파일 `web/src/hooks/useWebSocket.ts` 단일 파일. 진행 트랙 A(간단) / B(정식 Iteration 9) 양안 제시.
+**Context**: 작업 브랜치 `worktree-bug+safari`. 사용자 트랙 선택 대기.
+
+---
+
+## Iteration 9 — 정식 트랙 진입 (사용자 승인)
+**Timestamp**: 2026-04-29T23:46:00Z
+**User Input**: "B"
+**AI Response**: 정식 AI-DLC 워크플로우로 Iteration 9 개시. Workspace Detection (Brownfield, 산출물 보존) → Requirements Analysis → Workflow Planning → U5 FD Patch → Code Generation Plan → Code Generation → Build & Test 순. 각 단계 사용자 승인 게이트 엄수. aidlc-state.md 에 Iteration 9 섹션 추가 예정.
+**Context**: Iteration 9 INCEPTION Phase 진입.
+
+---
+
+## Iteration 9 — Requirements Analysis 모호점 Q&A 답변
+**Timestamp**: 2026-04-29T23:50:00Z
+**User Input**: "Q1. A, Q2. A, Q3. A, Q4. A"
+**AI Response**: 답변 반영 — Q1=A 프로덕션 임베드 바이너리 환경 / Q2=A `/play` (PlayerView) 단독 / Q3=A `pageshow event.persisted === true` 시 `window.location.reload()` 풀 리로드 (token resume 으로 게임 상태 자동 복원) / Q4=A `pagehide` 시 무조건 `ws.close(1000, "pagehide")`. Requirements 문서 v1.0 작성 → 사용자 승인 게이트.
+**Context**: Iteration 9 Requirements Analysis 진행.
+
+---
+
+## Iteration 9 — Requirements v1.0 사용자 승인
+**Timestamp**: 2026-04-29T23:55:00Z
+**User Input**: "A)"
+**AI Response**: `aidlc-docs/inception/requirements/iteration9-bug-safari-reload-requirements.md` v1.0 사용자 승인 완료. aidlc-state.md Iteration 9 RA 체크박스 [x] 마킹. Workflow Planning 단계 진입 — `construction/plans/iteration9-execution-plan.md` 작성 예정. U1/U2/U3/U4 모두 SKIP, U5 단독 진행.
+**Context**: Iteration 9 Workflow Planning 진입.
+
+---
+
+## Iteration 9 — Workflow Execution Plan v1.0 사용자 승인
+**Timestamp**: 2026-04-30T00:00:00Z
+**User Input**: "A"
+**AI Response**: `aidlc-docs/construction/plans/iteration9-execution-plan.md` v1.0 사용자 승인 완료. aidlc-state.md Workflow Planning 체크박스 [x] 마킹. Phase A — U5 Functional Design Patch 진입 — `aidlc-docs/construction/u5-web-frontend/functional-design/iteration9-patch.md` v1.0 작성 예정.
+**Context**: Iteration 9 CONSTRUCTION Phase A 진입.
+
+---
+
+## Iteration 9 — U5 Functional Design Patch v1.0 사용자 승인
+**Timestamp**: 2026-04-30T00:05:00Z
+**User Input**: "A"
+**AI Response**: `aidlc-docs/construction/u5-web-frontend/functional-design/iteration9-patch.md` v1.0 사용자 승인 완료. aidlc-state.md U5 FD 체크박스 [x] 마킹. Phase B — U5 Code Generation Plan 진입 — `aidlc-docs/construction/plans/iteration9-u5-code-generation-plan.md` v1.0 작성 예정. Step A~G 체크리스트.
+**Context**: Iteration 9 CONSTRUCTION Phase B 진입.
+
+---
+
+## Iteration 9 — U5 Code Generation Plan v1.0 사용자 승인
+**Timestamp**: 2026-04-30T00:10:00Z
+**User Input**: "A"
+**AI Response**: `aidlc-docs/construction/plans/iteration9-u5-code-generation-plan.md` v1.0 사용자 승인 완료. aidlc-state.md U5 Code Gen Plan 체크박스 [x] 마킹. Phase C — U5 Code Generation 실행 단계 진입. Step A~G 순차 실행 (코드 변경 → 신규 테스트 작성 → typecheck/test/build/go build/go test → audit/state 동기화).
+**Context**: Iteration 9 CONSTRUCTION Phase C 실행 시작.
+
+---
+
+## Iteration 9 — Phase C Code Generation 사용자 승인
+**Timestamp**: 2026-04-30T00:20:00Z
+**User Input**: "A"
+**AI Response**: Phase C (Code Generation) 결과 사용자 승인 완료. aidlc-state.md U5 Code Generation 체크박스 [x] 마킹 (이미 갱신됨). Phase D — Build & Test 결과 문서 작성 진입 — `aidlc-docs/construction/build-and-test/iteration9-test-results.md` v1.0 작성 예정.
+**Context**: Iteration 9 CONSTRUCTION Phase D 진입.
+
+---
+
+## Iteration 9 — Build & Test Results v1.0 사용자 최종 승인 + 종료
+**Timestamp**: 2026-04-30T00:25:00Z
+**User Input**: "A"
+**AI Response**: `aidlc-docs/construction/build-and-test/iteration9-test-results.md` v1.0 사용자 최종 승인 완료. **Iteration 9 (Bug · iOS Safari 새로고침 시 연결 실패) 종료**. aidlc-state.md Iteration 9 Build and Test 체크박스 [x] 마킹.
+요약 — 영향 단위: U5 단독 (`web/src/hooks/useWebSocket.ts` +40/-1, 신규 `useWebSocket.test.ts` 169 라인). FR-1 `pagehide` 동기 close / FR-2 `pageshow.persisted=true` 풀 리로드 / FR-3 onclose `wsRef===ws` 가드 / FR-4 connection-local `abandoned` flag / FR-5 기존 reconnect/backoff/token resume 보존. 검증: `npm test` 71 PASS (이전 66 → +5 신규 I9-W1~W5), JS gzip 65.71 KB (+0.09 KB), `go test ./... -race` 6 패키지 PASS, `go build` 17.97 MB. `useWebSocket.ts` 단위 커버리지 0% → 85.39% 신규 진입.
+변경 미커밋 — 사용자 명시적 commit 지시 후 진행 예정. OPERATIONS placeholder 로 이동: iOS Safari 실기 회귀(5단계 골든패스) 사용자 트리거 대기.
+**Context**: Iteration 9 종료. 작업 트리 `worktree-bug+safari` 에 모든 변경 보존됨. 워크트리 `web/node_modules` 심볼릭 링크는 `.gitignore` 대상이라 PR 영향 없음.
+
+---
+
+---
+
+## Iteration 9 — Phase C Code Generation 실행 결과
+**Timestamp**: 2026-04-30T00:15:00Z
+**User Input**: (Phase C 실행 자동 진행 — 사용자 별도 입력 없음)
+**AI Response**: Step A~G 완료.
+- Step A — `useWebSocket.ts` connect closure 안 `let abandoned = false` 도입, cleanup 첫 줄 `abandoned = true` 추가
+- Step B — onclose 첫 줄 `if (abandoned) return;` 가드 + `wsRef.current = null` 을 `if (wsRef.current === ws) wsRef.current = null;` 로 조건화
+- Step C — `pagehide` 리스너 등록 + cleanup 해제, `ws.close(1000, "pagehide")` 동기 호출
+- Step D — `pageshow` 리스너 등록 + cleanup 해제, `event.persisted === true` 시 `window.location.reload()`
+- Step E — `web/src/hooks/useWebSocket.test.ts` 신규 (169 라인). I9-W1~W5 5 케이스. FakeWS stub + `vi.useFakeTimers` + `window.location` 객체 교체 mock. 워크트리 node_modules 부재로 메인 워크스페이스 `web/node_modules` 심볼릭 링크 1건 생성.
+- Step F — 검증 결과:
+  - `npm run typecheck` PASS
+  - `npm test` 71 PASS (이전 66 → +5 신규)
+  - `npm run build` 성공, JS gzip 65.71 KB (baseline 65.62 KB → +0.09 KB, NFR ±1 KB 이내) / CSS gzip 3.21 KB 동일
+  - `go build -o /tmp/mafia-game-iter9 ./cmd/mafia-game` 성공 17.97 MB (baseline 동일)
+  - `go test ./... -count=1 -race` 6 패키지 PASS (announce 1.36s / game 1.49s / persistence 1.98s / session 2.56s / transport/http 2.09s / transport/ws 3.97s)
+  - `npm run test:coverage` — 전체 92.83% / `useWebSocket.ts` 85.39% (이전 단위 테스트 0건 → 신규 진입 라인 100% 커버)
+- Step G — audit.md / aidlc-state.md 갱신 (본 entry).
+변경 파일: `web/src/hooks/useWebSocket.ts` (+40, -1) / `web/src/hooks/useWebSocket.test.ts` (신규 +169). 사용자 승인 게이트 (2-옵션) 대기.
+**Context**: Iteration 9 CONSTRUCTION Phase C 종료, Phase D Build & Test 진입 대기.
+
+---
+
+---
+
 ## Iteration 9 — 신규 결함 보고 (Welcome Back)
 **Timestamp**: 2026-04-30T00:10:00Z
 **User Input**: "투표 결과 또는 전날 밤의 결과가 호스트 화면에서 보여지고 다음 페이즈로 진행되었으면 좋겠습니다.

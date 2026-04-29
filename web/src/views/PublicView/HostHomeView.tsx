@@ -30,15 +30,8 @@ export function HostHomeView() {
         zIndex: 10,
       }}
     >
-      <div className="eyebrow">HOST MAIN · 메인 메뉴</div>
-      <h1 className="mafia-title stone sm">MAFIA</h1>
-      <div className="mafia-sub" style={{ fontSize: "0.95rem", marginTop: 0 }}>
-        마 피 아 게 임
-      </div>
       <div
-        className="gold-frame"
         style={{
-          padding: "1.75rem 2.25rem",
           display: "flex",
           flexDirection: "column",
           gap: "0.85rem",
