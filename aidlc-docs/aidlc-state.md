@@ -435,7 +435,7 @@
 
 ## Iteration 9 Stage Progress (2026-04-29) — Bug · iOS Safari 새로고침 시 연결 실패
 
-**브랜치**: `worktree-bug+safari`
+**브랜치**: `worktree-bug+safari` (PR#5 머지 완료 — 2026-04-29T23:55Z 이후)
 **트리거**: 사용자 결함 보고 — 휴대폰 Safari 접속 후 새로고침 시 alternation 패턴(1회 실패 → 2회 성공 → 3회 실패) 으로 WebSocket 미연결.
 
 ### 🔵 INCEPTION
@@ -461,11 +461,46 @@
 #### 공통
 - [x] Build and Test — `build-and-test/iteration9-test-results.md` v1.0 (사용자 최종 승인 2026-04-30T00:25Z). FR-1~FR-5 매트릭스 PASS, `npm test` 71 PASS (이전 66 → +5), `go test ./... -race` 6 패키지 PASS, JS gzip 65.71 KB (+0.09 KB), go binary 17.97 MB. `useWebSocket.ts` 단위 커버리지 0% → 85.39%.
 
-**Iteration 9 종료** (2026-04-30T00:25Z) — iOS Safari 새로고침 시 alternation 패턴 차단. `useWebSocket.ts` 라이프사이클 보강 (pagehide 동기 close / pageshow BFCache 풀 리로드 / onclose race 가드 2건). 변경 미커밋 — 사용자 commit 지시 대기.
+**Iteration 9 (Safari) 종료** (2026-04-30T00:25Z) — iOS Safari 새로고침 시 alternation 패턴 차단. `useWebSocket.ts` 라이프사이클 보강 (pagehide 동기 close / pageshow BFCache 풀 리로드 / onclose race 가드 2건).
 
 ### 🟡 OPERATIONS
 - [ ] iOS Safari 실기 회귀 (사용자 트리거 — 본 워크플로우는 자동 검증 불가): 휴대폰 Safari 새로고침 5회 / 게임 진행 중 새로고침 + token resume / 다른 탭 이동 후 BFCache 복원 / 기내 모드 토글 후 reconnect / Chrome·Firefox·Edge 데스크톱 회귀
 
+---
+
+## Iteration 9b Stage Progress (2026-04-30) — Fix · 최종 결과 발표 직후 EndScreen 전환
+
+> 동일 라벨 "Iteration 9" 가 두 브랜치에서 병행 진행되어, Safari 결함은 위 섹션, 본 EndScreen 결함은 `worktree-fix+final-result` (본 PR) 에서 처리. 산출물 파일명에 `iteration9-fix-final-result-` 접두를 붙여 구분.
+
+**브랜치**: `worktree-fix+final-result`
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~8 산출물 보존. 결함: `tally.applyElimination` / `resolveNight` 가 `Eliminated`/`DeathAnnounced` 직후 같은 이벤트 batch 안에서 `checkEnd → GameEnded` 까지 발행 → U5 reducer 가 즉시 Phase=END 로 전환 → SubtitleArea 의 마지막 결과 안내가 가려지고 EndScreen 이 노출됨.
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration9-fix-final-result-requirements.md` v1.0 (사용자 승인 2026-04-30T00:35Z, Q1~Q8 모두 A)
+- [x] User Stories — SKIP
+- [x] Workflow Planning — `construction/plans/iteration9-fix-final-result-execution-plan.md` v1.0 (사용자 승인 2026-04-30T00:45Z)
+- [x] Application Design — SKIP (컴포넌트 추가 없음, State 필드 1건 + 함수 2건만 추가)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION
+
+#### U1 Game Core
+- [x] Functional Design Patch — `u1-game-core/functional-design/iteration9-patch.md` v1.0 (사용자 승인 2026-04-30T01:00Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration9-u1-code-generation-plan.md` v1.0 (사용자 승인 2026-04-30T01:10Z)
+- [x] Code Generation — Step A~I 완료. 7 신규 테스트 (I9-T1~T7) PASS, 6 패키지 race PASS, game 커버리지 91.8% → 92.5% (+0.7pp), 빌드 17 MB 성공, npm 66 PASS, JS gzip 65.62 KB (baseline 동일). 기존 시나리오 회귀 마이그레이션은 불필요로 판명 (`checkEnd` 시그니처 보존 + ForceEndGame 즉시 emit 보존).
+
+#### U2/U3/U4/U5
+- [ ] 모든 단계 SKIP (실코드 변경 없음, 회귀 검증만)
+
+#### 공통
+- [x] Build and Test — `construction/build-and-test/iteration9-fix-final-result-test-results.md` v1.0 (사용자 최종 승인 2026-04-30T01:50:00Z). FR-1~FR-8 + NFR-1~NFR-6 + AC-1~AC-6 추적, 패키지별 커버리지(announce 94.3% / game 92.5% +0.7pp / persistence 80.2% / session 87.3% / transport/http 90.3% / transport/ws 82.3%), 회귀 영향 분석, NFR 영향, DoD 체크리스트 완료. `go test ./... -count=1 -race` 6 패키지 PASS, `go build` 17 MB, `npm test` 66 PASS, `npm run build` JS gzip 65.62 KB.
+
+**Iteration 9b 종료** (2026-04-30T01:50:00Z) — VOTE 처형/NIGHT 사망 발표 직후 5초 결과 자막 노출 후 EndScreen 전환. State.PendingGameEnd + Tick 만료 분기 패턴 (Iter8 INTRO/Day 버퍼와 동일 정책).
+
+### 🟡 OPERATIONS
+- [ ] Chrome DevTools MCP 회귀 (호스트 + 4 player) — Vote-end CITIZEN_WIN / Night-end MAFIA_WIN / Pause-Resume mid-buffer / HOST_FORCE_END mid-buffer 4 시나리오 (사용자 트리거 권장)
 
 ---
 
@@ -498,7 +533,7 @@
 #### 공통
 - [x] Build and Test — `aidlc-docs/construction/build-and-test/iteration10-test-results.md` v1.0 (사용자 최종 승인 2026-04-30T02:10Z).
 
-**Iteration 10 종료** (2026-04-30T02:10Z) — 호스트 화면 BGM 무한재생 도입. 변경 표면 U5 단독 (`useBgm` 훅 + `BgmToggle` + `PublicView` 통합). `npm test` 71 → 75 PASS, JS gzip 65.71 → 66.01 KB (+0.30 KB), `go test ./... -race` 6 패키지 PASS, `go build` 26.49 MB (bgm.mp3 8.44 MB 자산 임베드 반영). 변경 미커밋 — 사용자 commit 지시 대기.
+**Iteration 10 종료** (2026-04-30T02:10Z) — 호스트 화면 BGM 무한재생 도입. 변경 표면 U5 단독 (`useBgm` 훅 + `BgmToggle` + `PublicView` 통합). `npm test` 71 → 75 PASS, JS gzip 65.71 → 66.01 KB (+0.30 KB), `go test ./... -race` 6 패키지 PASS, `go build` 26.49 MB (bgm.mp3 8.44 MB 자산 임베드 반영).
 
 ### 🟡 OPERATIONS
 - [ ] Chrome DevTools MCP 회귀 (호스트 priming 후 BGM 무한재생 / 효과음 동시 재생 시 청취감 / 새로고침 후 재priming / 모바일 Safari 자동재생 동작 / 토글 OFF→ON currentTime 보존 / 플레이어 화면 BGM 부재)
