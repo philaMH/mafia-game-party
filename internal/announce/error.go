@@ -53,7 +53,6 @@ func (defaultCatalog) RenderError(err error, sender game.PlayerID, ctx CatalogCo
 		}
 		return Announcement{
 			Subtitle:      base,
-			Speech:        base,
 			Severity:      severityForCode(ee.Code),
 			ForPublicOnly: false,
 		}
@@ -61,13 +60,14 @@ func (defaultCatalog) RenderError(err error, sender game.PlayerID, ctx CatalogCo
 
 	return Announcement{
 		Subtitle:      errFallback,
-		Speech:        errFallback,
 		Severity:      SeverityWarn,
 		ForPublicOnly: false,
 	}
 }
 
 // renderValidationErrors joins multiple field errors with "; ".
+// Error announcements are private (per-player toasts) and never carry an
+// AudioID — Iter7 voice catalog targets public host narration only.
 func renderValidationErrors(ve game.ValidationErrors) Announcement {
 	parts := make([]string, 0, len(ve))
 	for _, fe := range ve {
@@ -76,7 +76,6 @@ func renderValidationErrors(ve game.ValidationErrors) Announcement {
 	combined := "입력이 올바르지 않습니다 — " + strings.Join(parts, "; ")
 	return Announcement{
 		Subtitle:      combined,
-		Speech:        combined,
 		Severity:      SeverityWarn,
 		ForPublicOnly: false,
 	}

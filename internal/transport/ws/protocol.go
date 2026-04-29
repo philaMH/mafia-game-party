@@ -175,7 +175,7 @@ type eventPayload struct {
 type announceMsg struct {
 	Type     string `json:"type"`
 	Subtitle string `json:"subtitle"`
-	Speech   string `json:"speech"`
+	AudioID  string `json:"audioId,omitempty"`
 	Severity string `json:"severity"`
 }
 

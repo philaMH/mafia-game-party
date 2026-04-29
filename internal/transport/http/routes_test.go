@@ -74,6 +74,76 @@ func TestAssetsHandler_404OnMissing(t *testing.T) {
 	}
 }
 
+// Iter7 — /audio/<id>.mp3 must be served as audio bytes, not the SPA
+// index.html. Regression: catalog audioId "phase.night" → file
+// served with audio/mpeg content-type and a non-immutable cache so
+// operators can replace recordings without fighting browser caches.
+func TestAudioHandler_ServesMp3WithShortCache(t *testing.T) {
+	assets := fstest.MapFS{
+		"audio/phase.night.mp3": {Data: []byte("ID3FAKEMP3")},
+	}
+	h := audioHandler(assets)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/audio/phase.night.mp3", nil)
+	h.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Errorf("status = %d", w.Code)
+	}
+	if cc := w.Header().Get("Cache-Control"); !strings.Contains(cc, "max-age=86400") {
+		t.Errorf("cache header expected max-age=86400, got %q", cc)
+	}
+	if strings.Contains(w.Header().Get("Cache-Control"), "immutable") {
+		t.Errorf("audio must not be marked immutable (operators replace files)")
+	}
+	if w.Body.String() != "ID3FAKEMP3" {
+		t.Errorf("body = %q (expected raw mp3 bytes)", w.Body.String())
+	}
+}
+
+func TestAudioHandler_404OnMissing(t *testing.T) {
+	assets := fstest.MapFS{}
+	h := audioHandler(assets)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/audio/intro.speaker.mp3", nil)
+	h.ServeHTTP(w, r)
+	if w.Code != 404 {
+		t.Errorf("status = %d (graceful skip on host requires 404, not SPA HTML)", w.Code)
+	}
+}
+
+func TestBuildMux_AudioPathDoesNotFallthroughToSPA(t *testing.T) {
+	cfg := Config{
+		Hub:   dummyHub{},
+		Store: dummyStore{},
+		Assets: fstest.MapFS{
+			"index.html":            {Data: []byte("<html>spa</html>")},
+			"audio/phase.night.mp3": {Data: []byte("ID3FAKEMP3")},
+		},
+	}
+	mux := buildMux(cfg, nil)
+
+	t.Run("existing mp3 served as audio bytes", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/audio/phase.night.mp3", nil)
+		mux.ServeHTTP(w, r)
+		if w.Code != 200 {
+			t.Fatalf("status = %d", w.Code)
+		}
+		if strings.Contains(w.Body.String(), "<html>") {
+			t.Errorf("audio path returned SPA HTML — fallthrough regression")
+		}
+	})
+
+	t.Run("missing mp3 returns 404, not index.html", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/audio/nonexistent.mp3", nil)
+		mux.ServeHTTP(w, r)
+		if w.Code != 404 {
+			t.Errorf("status = %d (must be 404 so host client triggers graceful skip)", w.Code)
+		}
+	})
+}
+
 func TestBuildMux_RegistersAllRoutes(t *testing.T) {
 	cfg := Config{
 		Hub:   dummyHub{},

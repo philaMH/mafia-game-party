@@ -286,7 +286,7 @@ func (h *hub) handleSubmitErr(c *Client, err error) {
 		h.enqueue(c, mustMarshal(announceMsg{
 			Type:     TypeAnnounce,
 			Subtitle: ann.Subtitle,
-			Speech:   ann.Speech,
+			AudioID:  ann.AudioID,
 			Severity: string(ann.Severity),
 		}))
 	}

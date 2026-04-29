@@ -13,15 +13,18 @@ const (
 	SeverityWarn     Severity = "WARN"
 )
 
-// Announcement is the rendered output for a single event. Subtitle and
-// Speech are intentionally identical at v1; future tweaks may diverge.
+// Announcement is the rendered output for a single event. Subtitle keeps
+// dynamic interpolation (names, day numbers, intro seconds, role-kr), while
+// AudioID names a stable cue identifier the public host client maps to a
+// pre-recorded /audio/<AudioID>.mp3 file (Iter7 FR-8.9). When AudioID is
+// empty the host plays no sound (graceful skip — Iter7 FR-8.8).
 //
 // An empty Announcement (Subtitle == "") signals "no message"; this is the
 // expected output for private events such as RoleRevealedToPlayer or
 // MafiaCohortRevealed (BR-U2-CAT-1).
 type Announcement struct {
 	Subtitle      string
-	Speech        string
+	AudioID       string
 	Severity      Severity
 	ForPublicOnly bool
 }

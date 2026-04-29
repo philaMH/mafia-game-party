@@ -4,7 +4,7 @@
 - **Project Name**: mafia-game
 - **Project Type**: Greenfield
 - **Start Date**: 2026-04-25T00:00:00Z
-- **Current Stage**: ITERATION 6 — Noir UI 시각 재설계 완료 (2026-04-29). U5 단독 변경, Go 백엔드 무영향. `noir.css` 신설(32 클래스) + 27 view/component 노이르 적용 + `background.jpg` 198 KB 임베드. `npm test` 45 PASS 유지, `npm run build` 성공 (JS gzip 64.93 KB, +3.18 KB), `go build` 성공 (15.2 MB), `go test ./...` 6 패키지 PASS. Build and Test 사용자 승인 대기. (이전 ITERATION 5: Pause/Resume + NightStep 시간 제어 — 사용자 승인 대기 유지)
+- **Current Stage**: ITERATION 7 — Voice 개편 + Operations 결함 패치(Stage E, 2026-04-29T20:08Z). 사용자 직접 테스트에서 무성 보고 → Chrome DevTools MCP 진단 → `internal/transport/http/routes.go` 의 `/audio/` 라우팅 누락 결함 확정 → `audioHandler` 추가(non-immutable cache 86400s) + 회귀 테스트 3건. `go test ./...` 6 패키지 PASS, http 커버리지 89.8% → 90.3%, 게임 시작 시 24 cue 정상 재생 + 누락 3건 graceful skip 실측 확인. (이전 ITERATION 6: Noir UI 완료, 사용자 승인 2026-04-29T08:55Z)
 
 ## Workspace State
 - **Existing Code**: No
@@ -286,4 +286,48 @@
 
 ### 🟡 OPERATIONS
 - [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (노이르 배경 가시성 / role-card 5:7 / vote-tile target / PauseBadge pulse / EndScreen dossier 확인 권장)
+
+---
+
+## Iteration 7 Stage Progress (2026-04-29)
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~6 산출물 보존, `internal/announce` (25+ 멘트 상수) + `web/src/hooks/useTTSQueue.ts` + `web/src/views/PublicView/VoiceToggle.tsx` 기존 자산 식별
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — Round 1 답변 수신 (Q1=A / Q2=A / Q3=Other / Q4=A / Q5=A / Q6=A / Q7=A / Q8=A). `iteration7-requirements-patch.md` v7.0-patch + `iteration7-voice-script.md` v1.0 사용자 승인 완료 (2026-04-29T18:25Z).
+- [x] User Stories — SKIP (엔진 교체 패치, 페르소나/시나리오 변동 없음)
+- [x] Workflow Planning — `iteration7-execution-plan.md` 사용자 승인 완료 (2026-04-29T18:35Z)
+- [x] **Iteration 7 종료** — Build and Test 사용자 승인 완료 (2026-04-29T19:05Z)
+- [x] Application Design — SKIP (컴포넌트 추가/제거 없음, `Announcement.AudioID` 필드 1건 추가/`Speech` 1건 폐기)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION (per-unit, plan 확정)
+#### U1 Game Core
+- [x] 모든 단계 SKIP (도메인 이벤트 변경 없음)
+
+#### U2 Session/Persistence/Announce
+- [x] Functional Design Patch — plan §3.1
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation (Stage A) — `Announcement` 구조 변경 + 27 cue 상수 + Render 분기 + Eliminated mafia/notmafia 2벌 + 카탈로그 테스트 4건 신규. announce 94.3% (+0.3 pp), session 86.1% 유지
+
+#### U3 Realtime Transport
+- [x] Functional Design Patch — plan §3.2
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation (Stage B) — `announceMsg.AudioID` JSON omitempty, `Speech` 키 폐기, dispatch/handlers 갱신. ws 82.4% 유지
+
+#### U4 HTTP Bootstrap
+- [x] Stage E 패치 (2026-04-29T20:08Z) — plan §3.1 의 "정적 자산 자동 서빙" 가정이 실측에서 거짓으로 확인됨. ServeMux 가 `/audio/` 핸들러를 명시 등록해야 SPA catch-all 로 빠지지 않음. `routes.go` `audioHandler` 신규(Cache-Control max-age=86400, non-immutable) + 회귀 테스트 3건(`TestAudioHandler_ServesMp3WithShortCache` / `TestAudioHandler_404OnMissing` / `TestBuildMux_AudioPathDoesNotFallthroughToSPA`). http 커버리지 89.8% → 90.3%.
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — plan §3.3
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation (Stage C) — `useAudioCueQueue` + 6 테스트 신규, `useTTSQueue` + 테스트 + setup mock 폐기, `wire.ts` AnnounceMsg.audioId, reducer audioAvailable + lastAnnounce.audioId, GameContext isHost gating, PublicView VoiceToggle host-only, `web/public/audio/.gitkeep`. npm test 47/47, JS gzip 64.83 KB (Iter6 대비 −0.10 KB), reducer.ts 90.72%, useAudioCueQueue.ts 91.58%
+
+#### 공통
+- [x] Build and Test (Stage D) — `iteration7-test-results.md` 작성 완료. R1~R8 추적 매트릭스, 커버리지 표, 회귀 영향, NFR 영향, RISK 결산, DoD. `go test ./... -count=1` 6 패키지 PASS, `go build` 15.94 MB, `npm test` 47 PASS, `npm run build` 성공. **사용자 승인 완료 (2026-04-29T19:05Z)**.
+
+### 🟡 OPERATIONS
+- [x] mp3 자산 1차 배치 (2026-04-29T20:00Z) — 24 파일 리네임 후 `web/public/audio/<audioId>.mp3` 배치 + `npm run build` + `go build` 검증 완료. 바이너리 17.97 MB(+2.03 MB), dist/audio 2.3 MB.
+- [ ] mp3 추가 녹음 3건 발주 — `intro.speaker.mp3` (자기소개 발언자), `timer.30.mp3` (토론 30초), `timer.10.mp3` (토론 10초). 동일 디렉터리에 두면 다음 빌드부터 자동 임베드.
+- [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (호스트 vs 일반 관전자 음성 분리, VoiceToggle 호스트 한정 노출, mp3 누락 graceful skip 실측, urgent 인터럽트, autoplay 가드 — 사용자 트리거 권장)
 

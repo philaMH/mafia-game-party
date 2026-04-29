@@ -26,6 +26,20 @@ export interface VoteTallyEntry {
   receivedAt: number;
 }
 
+// AudioCueQueueEntry records one announce-sourced audio request and the
+// event kind in effect when the announce arrived. Effect drains by seq so
+// no cue is lost when React batches multiple WS frames into one render
+// (which silently dropped phase.night, game.started, and intro.speaker
+// before this change because the effect only saw `lastAnnounce` and
+// always observed the *last* announcement in the batch).
+export interface AudioCueQueueEntry {
+  audioId: string;
+  eventKind?: EventPayload["kind"];
+  seq: number;
+}
+
+const AUDIO_CUE_LOG_CAP = 64;
+
 export interface GameState {
   status: ConnectionStatus;
   clientId?: string;
@@ -34,13 +48,23 @@ export interface GameState {
   isHost: boolean;
   state?: State;
   your: YourInfo;
-  lastAnnounce?: { subtitle: string; severity: Severity; receivedAt: number };
+  lastAnnounce?: {
+    subtitle: string;
+    audioId?: string;
+    severity: Severity;
+    receivedAt: number;
+  };
   lastEventKind?: EventPayload["kind"];
   lastPoliceResult?: PoliceResultEntry;
   lastVoteTally?: VoteTallyEntry;
   errors: { code: string; message: string; addedAt: number }[];
   voiceOn: boolean;
-  ttsAvailable: boolean;
+  // Iter7 — true when the host PublicView can play <audio> elements.
+  // Previously named ttsAvailable when we relied on Web Speech; the
+  // browser support surface is broader for HTMLAudioElement so this
+  // flag is effectively always true on real browsers and only gated
+  // for SSR / test environments without a `window`.
+  audioAvailable: boolean;
   // Iteration 2 — GM seat & room lifecycle gating.
   hostToken?: string;
   roomOpened: boolean;
@@ -50,6 +74,14 @@ export interface GameState {
   // GameContext to fire side effects (e.g., clearing the saved player
   // token from localStorage) without coupling the reducer to storage.
   roomClosedSeq: number;
+  // FIFO log of audio cue requests, capped at AUDIO_CUE_LOG_CAP. Each
+  // announce with a non-empty audioId appends one entry. GameContext
+  // tracks the last seq it dispatched via a ref so every cue plays
+  // exactly once even when multiple WS frames batch into one render.
+  audioCues: AudioCueQueueEntry[];
+  // Monotonic seq for audioCues. Preserved across logout / room:closed
+  // so the GameContext ref-based watermark stays valid across resets.
+  audioCueSeq: number;
 }
 
 export type GameAction =
@@ -59,7 +91,7 @@ export type GameAction =
   | { type: "ws_reconnecting" }
   | { type: "ws_closed" }
   | { type: "set_voice"; on: boolean }
-  | { type: "tts_unavailable" }
+  | { type: "audio_unavailable" }
   | { type: "ack_error"; addedAt: number }
   | { type: "logout" };
 
@@ -69,11 +101,13 @@ export const initialState: GameState = {
   your: {},
   errors: [],
   voiceOn: true,
-  ttsAvailable:
-    typeof window !== "undefined" && typeof window.speechSynthesis !== "undefined",
+  audioAvailable:
+    typeof window !== "undefined" && typeof Audio !== "undefined",
   roomOpened: false,
   hostOccupied: false,
   roomClosedSeq: 0,
+  audioCues: [],
+  audioCueSeq: 0,
 };
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -90,16 +124,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return applyIncoming(state, action.msg);
     case "set_voice":
       return { ...state, voiceOn: action.on };
-    case "tts_unavailable":
-      return { ...state, ttsAvailable: false };
+    case "audio_unavailable":
+      return { ...state, audioAvailable: false };
     case "ack_error":
       return { ...state, errors: state.errors.filter((e) => e.addedAt !== action.addedAt) };
     case "logout":
       return {
         ...initialState,
         status: state.status,
-        ttsAvailable: state.ttsAvailable,
+        audioAvailable: state.audioAvailable,
         voiceOn: state.voiceOn,
+        // Preserve audioCueSeq so the GameContext ref-based watermark
+        // continues monotonically; resetting to 0 would let stale seqs
+        // shadow new cues until the watermark caught up again.
+        audioCueSeq: state.audioCueSeq,
       };
     default:
       return state;
@@ -150,30 +188,50 @@ function applyIncoming(state: GameState, msg: IncomingMsg): GameState {
       // Drop player-scoped state (token, playerId, role/keyword, last
       // game state) so the next round starts clean. The host keeps
       // hostToken / isHost so they stay on the GM seat and return to
-      // the OpenRoom configuration screen. ttsAvailable / voiceOn are
+      // the OpenRoom configuration screen. audioAvailable / voiceOn are
       // device-level preferences and are preserved. roomClosedSeq is
       // bumped so a GameContext effect can clear localStorage.
       return {
         ...initialState,
         status: state.status,
-        ttsAvailable: state.ttsAvailable,
+        audioAvailable: state.audioAvailable,
         voiceOn: state.voiceOn,
         clientId: state.clientId,
         hostToken: state.hostToken,
         isHost: state.hostToken !== undefined,
         roomClosedSeq: state.roomClosedSeq + 1,
+        // Preserve seq so the GameContext watermark keeps advancing —
+        // see the same comment on the `logout` case.
+        audioCueSeq: state.audioCueSeq,
       };
   }
 }
 
 function applyAnnounce(state: GameState, msg: AnnounceMsg): GameState {
+  const lastAnnounce = {
+    subtitle: msg.subtitle,
+    audioId: msg.audioId,
+    severity: msg.severity,
+    receivedAt: Date.now(),
+  };
+  if (!msg.audioId) {
+    return { ...state, lastAnnounce };
+  }
+  const seq = state.audioCueSeq + 1;
+  const entry: AudioCueQueueEntry = {
+    audioId: msg.audioId,
+    eventKind: state.lastEventKind,
+    seq,
+  };
+  const audioCues =
+    state.audioCues.length >= AUDIO_CUE_LOG_CAP
+      ? [...state.audioCues.slice(state.audioCues.length - AUDIO_CUE_LOG_CAP + 1), entry]
+      : [...state.audioCues, entry];
   return {
     ...state,
-    lastAnnounce: {
-      subtitle: msg.subtitle,
-      severity: msg.severity,
-      receivedAt: Date.now(),
-    },
+    lastAnnounce,
+    audioCues,
+    audioCueSeq: seq,
   };
 }
 

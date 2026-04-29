@@ -87,7 +87,7 @@ func (h *hub) onEvent(out session.EventOut) {
 		msg := mustMarshal(announceMsg{
 			Type:     TypeAnnounce,
 			Subtitle: out.Announcement.Subtitle,
-			Speech:   out.Announcement.Speech,
+			AudioID:  out.Announcement.AudioID,
 			Severity: string(out.Announcement.Severity),
 		})
 		for _, c := range h.registry.snapshotPublic() {

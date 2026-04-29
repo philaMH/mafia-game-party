@@ -2,81 +2,44 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
-class FakeUtterance {
-  text: string;
-  lang = "ko-KR";
-  pitch = 1;
-  rate = 1;
-  volume = 1;
-  voice: SpeechSynthesisVoice | null = null;
-  onend: (() => void) | null = null;
-  onerror: (() => void) | null = null;
+// Iter7 — host PublicView plays pre-recorded /audio/<id>.mp3 via
+// HTMLAudioElement. jsdom doesn't implement playback, so we stub the
+// surface used by useAudioCueQueue: src setter, play(), pause(), and the
+// lifecycle events ('ended', 'error').
+class FakeAudio {
+  src = "";
+  currentTime = 0;
+  paused = true;
+  private listeners: Record<string, Array<() => void>> = {};
 
-  constructor(text: string) {
-    this.text = text;
-  }
-}
-
-class FakeSpeechSynthesis implements EventTarget {
-  speaking = false;
-  paused = false;
-  pending = false;
-  onvoiceschanged: ((this: SpeechSynthesis, ev: Event) => void) | null = null;
-  utterances: FakeUtterance[] = [];
-
-  speak(utt: SpeechSynthesisUtterance): void {
-    const fake = utt as unknown as FakeUtterance;
-    this.utterances.push(fake);
-    this.speaking = true;
-    // Synchronously fire onend so tests can observe queue progression.
+  play(): Promise<void> {
+    this.paused = false;
+    // Fire 'ended' on next tick so the queue advances deterministically.
     setTimeout(() => {
-      this.speaking = false;
-      fake.onend?.();
+      this.paused = true;
+      this.dispatch("ended");
     }, 0);
-  }
-  cancel(): void {
-    this.utterances = [];
-    this.speaking = false;
+    return Promise.resolve();
   }
   pause(): void {
     this.paused = true;
   }
-  resume(): void {
-    this.paused = false;
+  load(): void {
+    /* no-op */
   }
-  getVoices(): SpeechSynthesisVoice[] {
-    return [
-      {
-        default: true,
-        lang: "ko-KR",
-        localService: true,
-        name: "FakeKorean",
-        voiceURI: "fake-ko",
-      } as SpeechSynthesisVoice,
-    ];
+  addEventListener(name: string, cb: () => void): void {
+    (this.listeners[name] ||= []).push(cb);
   }
-  addEventListener(): void {
-    /* no-op for tests */
+  removeEventListener(name: string, cb: () => void): void {
+    this.listeners[name] = (this.listeners[name] || []).filter((x) => x !== cb);
   }
-  removeEventListener(): void {
-    /* no-op for tests */
-  }
-  dispatchEvent(): boolean {
-    return true;
+  dispatch(name: string): void {
+    (this.listeners[name] || []).slice().forEach((cb) => cb());
   }
 }
 
 beforeEach(() => {
-  Object.defineProperty(window, "speechSynthesis", {
-    configurable: true,
-    writable: true,
-    value: new FakeSpeechSynthesis() as unknown as SpeechSynthesis,
-  });
-  Object.defineProperty(window, "SpeechSynthesisUtterance", {
-    configurable: true,
-    writable: true,
-    value: FakeUtterance as unknown as typeof SpeechSynthesisUtterance,
-  });
+  vi.stubGlobal("Audio", FakeAudio as unknown as typeof Audio);
   vi.stubGlobal("WebSocket", class FakeWS {
     static OPEN = 1;
     readyState = 0;

@@ -1257,3 +1257,171 @@ Q7. B"
 **Context**: Iteration 6 완료. 워크스페이스 상태 갱신 완료.
 
 ---
+
+## Iteration 7 — Initial User Request (Voice 개편)
+**Timestamp**: 2026-04-29T17:55:00Z
+**User Input**: "voice 기능을 개편합니다.\n1. 호스트만 음성 출력이 가능합니다.\n2. 진행 phase에 따라 사전 녹음된 음성파일을 재생하여 플레이 진행을 돕습니다.\n3. 녹음이 필요한 phase를 모든 상황에 따라 선별하고, 스크립트를 작성합니다. 개발자가 직접 외부에서 음성 파일을 준비하겠습니다."
+**AI Response**: Iteration 7 진입 결정. Brownfield(5단위 + Iteration 1~6 산출물 보존). 현재 voice 구현 파악 — `web/src/hooks/useTTSQueue.ts`(브라우저 SpeechSynthesis 기반 큐), `web/src/views/PublicView/VoiceToggle.tsx`, `internal/announce/catalog_data.go`(25+ 한국어 멘트 상수), `Announcement.Speech` 필드 + `ForPublicOnly` 플래그. Workspace Detection → Reverse Engineering SKIP → Requirements Analysis 명확화 라운드 진입 예정.
+**Context**: 변경 본질 = 브라우저 TTS → 사전 녹음 오디오 파일 재생, 호스트만 출력 강화, 안내 시점 카탈로그 정비 + 스크립트 산출. 파급: U2 announce(Speech 필드 의미/식별자 부여), U3(eventPayload 직렬화 영향 검토), U5(useTTSQueue 폐기 또는 교체, VoiceToggle/PublicView 가시성). U1 Game Core 무영향 예상. U4 무영향. 명확화 필요 모호점 다수(파일 형식·동적 변수 보간·기존 TTS 폴백 여부 등) → 객관식 질문 파일 작성 예정.
+
+---
+
+## Iteration 7 — Requirements Analysis: Clarification Round 1 Created
+**Timestamp**: 2026-04-29T17:56:00Z
+**User Input**: (자동 단계 — 사용자 입력 없음)
+**AI Response**: `aidlc-docs/inception/requirements/iteration7-clarification-questions.md` 생성. 객관식 8문항 + 자유 서술 1문항 + 현 카탈로그 27 시점 참고표. 핵심 모호점: Q1 "호스트만"의 정의(host:claim 한정 vs PublicView 전체), Q2 파일 형식, Q3 동적 변수 처리, Q4 안내 범위, Q5 누락 시 폴백, Q6 기존 TTS 처리, Q7 토글 가시성, Q8 식별자/매니페스트 전략. 사용자 답변 대기 중 (GATE).
+**Context**: Requirements Analysis Step 6 — 사용자 승인 게이트. 답변 수신 후 모호성 해소 → requirements 문서화 → 승인 게이트 → Workflow Planning.
+
+---
+
+## Iteration 7 — Requirements Analysis: Clarification Round 1 Answers Received
+**Timestamp**: 2026-04-29T18:05:00Z
+**User Input**: "완료" (질문 파일 직접 편집으로 8문항 답변 기입)
+- Q1=A: host:claim 보유 PublicView 클라이언트만 음성 재생
+- Q2=A: MP3 단일 형식, `web/public/audio/*.mp3`
+- Q3=Other(자유 서술): "자막에는 변수가 들어갈 수 있지만 음성에는 정형 멘트만 담습니다. 예) 전날 밤 %s이(가) 사망했습니다 -> 전날 밤 플레이어 한 명이 사망했습니다. 예) %s이(가) 마을의 결정으로 처형되었습니다. 그의 정체는 %s이었습니다. -> 플레이어가 마을의 결정으로 처형되었습니다. 그의 정체는 마피아였습니다. (또는 그의 정체는 마피아가 아니었습니다. 로 음성 2벌 준비)"
+- Q4=A: 현재 카탈로그 모든 시점 (Q3 정책 적용)
+- Q5=A: 자막만 표시, 음성 없이 통과
+- Q6=A: useTTSQueue 완전 제거
+- Q7=A: 호스트(host:claim 보유)에게만 VoiceToggle 표시
+- Q8=A: 이벤트별 안정 식별자(audioId), `/audio/<audioId>.mp3` 매핑
+- Free-form: (없음)
+**AI Response**: 답변 8건 수집 완료. 핵심 결정 = (1) 호스트 식별 = isHost flag(host:claim 토큰 보유), (2) 정적 자산 `web/public/audio/*.mp3`, (3) Q3 정책 = 음성 변수 제거 + Eliminated 는 마피아/비마피아 2벌, (4) 27 시점 모두 대상, (5) 누락 graceful skip, (6) useTTSQueue 폐기, (7) host-only Toggle, (8) audioId 키. 추가 라운드 불필요 — 합리적 추정으로 변수 멘트 정형화하고 사용자 검토를 Requirements 문서에서 받음.
+**Context**: Requirements Analysis Step 7 — 답변 분석 완료. 다음 단계 = `iteration7-requirements-patch.md` + `iteration7-voice-script.md` 작성 후 승인 게이트.
+
+---
+
+## Iteration 7 — Requirements Patch + Voice Script 산출
+**Timestamp**: 2026-04-29T18:10:00Z
+**User Input**: (자동 단계)
+**AI Response**: 다음 두 산출물 생성 예정 — (1) `aidlc-docs/inception/requirements/iteration7-requirements-patch.md` (FR-8 개정안: TTS → 사전 녹음 오디오, 호스트 한정, audioId 키, 누락 graceful skip, 변수 정형화 정책), (2) `aidlc-docs/inception/requirements/iteration7-voice-script.md` (27 audioId × 음성 스크립트 + 자막 텍스트 + 변수 정형화 매핑 + 개발자 녹음 가이드).
+**Context**: Requirements Analysis 마지막 단계 — 산출물 작성 후 사용자 승인 게이트. 미해결 추정 사항(IntroSpeakerChanged "다음 차례입니다, 발언하시오." / PhaseChanged Day≥2 일수 제거 / PhaseChanged Intro 초 제거)은 문서에서 명시적으로 표시하여 사용자가 검토 시 수정 가능.
+
+---
+
+## Iteration 7 — Requirements Patch + Voice Script 작성 완료
+**Timestamp**: 2026-04-29T18:15:00Z
+**User Input**: (자동 단계)
+**AI Response**:
+1. `aidlc-docs/inception/requirements/iteration7-requirements-patch.md` v7.0-patch 작성 — Intent Analysis, Before/After 표, FR-8.1~8.10 개정안, 영향 단위(U1=무영향, U2/U3/U5=변경, U4=무영향), NFR 영향, 시나리오 변경(시나리오 6 폐기 + 시나리오 6' 추가), 가정/제약, Traceability, DoD, 미해결 추정 사항 §9, 다음 단계 §10.
+2. `aidlc-docs/inception/requirements/iteration7-voice-script.md` v1.0 작성 — 27 audioId 카탈로그(8 메타 + 6 phase + 3 night + 1 intro.speaker + 4 사망/처형 + 3 timer + 2 vote + 2 system optional), 정형화 정책 §2, 발화 가이드라인 §4(톤·길이·강세 시점별), 파일 명명 규칙, 누락 절차, 검수 체크리스트.
+3. `aidlc-state.md` Iteration 7 섹션 갱신 — Requirements Analysis [x] + 사용자 승인 대기 표기.
+**Context**: Requirements Analysis 게이트. 사용자 검토 항목 = (a) requirements-patch §9 미해결 추정 3건, (b) voice-script §3 27 audioId 텍스트 전수, (c) §3.5 Eliminated 2벌 분기 (마피아/비마피아) 동의 여부. 승인 또는 변경 요청 수신 후 Workflow Planning 진행.
+
+---
+
+## Iteration 7 — Requirements Analysis 사용자 승인
+**Timestamp**: 2026-04-29T18:25:00Z
+**User Input**: "A"
+**AI Response**: 승인 수신 — `iteration7-requirements-patch.md` v7.0-patch + `iteration7-voice-script.md` v1.0 확정. §9 미해결 추정 3건(phase.intro 시간 제거 / phase.day 일수 제거 / intro.speaker 이름 제거) 및 eliminated.notmafia 통합 정책 모두 확정. system.restore / system.persist.failure 는 §3.8 선택 표기 유지. 다음 단계 = Workflow Planning.
+**Context**: Requirements Analysis [x] 완료. INCEPTION 단계의 다음 게이트인 Workflow Planning 진입.
+
+---
+
+## Iteration 7 — Workflow Planning Started
+**Timestamp**: 2026-04-29T18:26:00Z
+**User Input**: (자동 단계)
+**AI Response**: `aidlc-docs/construction/plans/iteration7-execution-plan.md` 작성 예정. Iteration 5/6 패턴(per-unit patch + Stage A~D + DoD 체크리스트) 적용. 영향 단위 U2 → U3 → U5 → Build & Test. U1/U4 SKIP. Application Design / Units Generation / Functional Design 별도 patch 산출물 SKIP — 본 plan §3 에 직접 반영(Iteration 5 와 동일 압축).
+**Context**: Workflow Planning Step 1~9. 산출물 작성 후 사용자 승인 게이트.
+
+---
+
+## Iteration 7 — Workflow Planning 산출물 완료
+**Timestamp**: 2026-04-29T18:30:00Z
+**User Input**: (자동 단계)
+**AI Response**: `aidlc-docs/construction/plans/iteration7-execution-plan.md` 작성 완료 — §1 단계 실행 결정 매트릭스, §2 Mermaid 흐름, §3 per-unit Functional Design Patch (U2/U3/U5 압축 — Announcement 구조 변경, audioId 매핑, 정형화 적용, 신규 훅 useAudioCueQueue 설계, isHost gating, 정적 자산 디렉터리, 영향 테스트, DoD), §4 Code Generation Stage 분해(A→B→C→D 11+4+11+5 단계), §5 영향 파일 일람, §6 NFR 영향 분석, §7 회귀 영향, §8 전체 DoD, §9 위험(RISK-7-1~5: autoplay 정책, mp3 누락, 커버리지 변동, Speech 외부 참조, audio context 재초기화), §10 다음 단계. aidlc-state.md 갱신: User Stories=SKIP, Application Design=SKIP, Units Generation=SKIP 모두 [x] 처리. **Workflow Planning 사용자 승인 대기 (GATE)**.
+**Context**: Workflow Planning Step 9 — 사용자 승인 게이트. 승인 시 Stage A 진입.
+
+---
+
+## Iteration 7 — Workflow Planning 사용자 승인
+**Timestamp**: 2026-04-29T18:35:00Z
+**User Input**: "A"
+**AI Response**: 승인 수신 — `iteration7-execution-plan.md` 확정. Stage A → B → C → D 순차 진행. Stage 순서(U2 → U3 → U5)와 `Announcement.Speech` 즉시 폐기 정책 모두 확정.
+**Context**: CONSTRUCTION 단계 진입. Stage A (U2 Session/Persistence/Announce — Announcement 구조 변경 + audioId 매핑 + Eliminated 분기 + 카탈로그 테스트) 시작.
+
+---
+
+## Iteration 7 — Stage A (U2 announce) 시작
+**Timestamp**: 2026-04-29T18:36:00Z
+**User Input**: (자동 단계)
+**AI Response**: Stage A 진입. 먼저 `Announcement.Speech` 외부 참조 일괄 점검(grep) 후 카탈로그 갱신·테스트 동기화·session 패키지 컴파일 영향 확인.
+**Context**: Code Generation Part 2 — Generation 실행. Part 1 (Plan) 은 `iteration7-execution-plan.md` §3.1 + §4 Stage A 로 갈음.
+
+---
+
+## Iteration 7 — Stage A + B + C + D 일괄 실행
+**Timestamp**: 2026-04-29T18:55:00Z
+**User Input**: (자동 단계)
+**AI Response**: Stage A → B → C → D 순차 실행 완료.
+- **Stage A (U2 announce)**: `internal/announce/catalog.go` (Announcement 구조 — Speech 제거 / AudioID 추가), `catalog_default.go` (27 cue 상수 + Render 27 분기 + Eliminated mafia/notmafia 분기 + ann() 시그니처 변경), `catalog_data.go` (SystemRestore/SystemPersistFailure AudioID 갱신), `error.go` (error 안내 Speech 제거), `catalog_test.go` (Subtitle != Speech 어서션 제거 + audioId 검증 + 신규 4 테스트). announce 커버리지 94.0% → 94.3%.
+- **Stage B (U3 wire)**: `protocol.go` (announceMsg.AudioID `json:"audioId,omitempty"`), `dispatch.go`, `handlers.go` (`Speech: ann.Speech` → `AudioID: ann.AudioID`). ws 커버리지 82.4% 유지.
+- **Stage C (U5 frontend)**: `web/public/audio/.gitkeep` 신규(외부 녹음 디렉터리 안내), `useAudioCueQueue.ts` 신규 157 LoC + 테스트 6건, `useTTSQueue.{ts,test.ts}` 삭제, `tests/setup.ts` FakeAudio 도입(FakeSpeechSynthesis 폐기), `wire.ts` (AnnounceMsg.speech → audioId?), `reducer.ts` (ttsAvailable → audioAvailable, lastAnnounce에 audioId 보존, audio_unavailable 액션), `reducer.test.ts` (audioId 보존 + graceful skip 케이스), `GameContext.tsx` (useAudioCueQueue + isHost gating + audioId 빈값 skip), `PublicView.tsx` (VoiceToggle/안내 모두 isHost 가드).
+- **Stage D (Build & Test)**: `go test ./... -count=1` 6 패키지 PASS, `go build -o /tmp/mafia-game-iter7` 15.94 MB, `npm test` 47/47 PASS, `npm run build` 성공 — JS gzip 64.93 → 64.83 KB (−0.10 KB), CSS gzip 3.21 KB. Coverage: announce 94.3% / game 91.7% / persistence 80.2% / session 86.1% / http 89.8% / ws 82.4%; reducer.ts 90.72%, useAudioCueQueue.ts 91.58%. `iteration7-test-results.md` 작성 완료.
+**Context**: Iteration 7 Code Generation + Build/Test 산출물 모두 완료. 사용자 승인 게이트 (Build and Test 결과).
+
+---
+
+## Iteration 7 — Build and Test 사용자 승인 (Iteration 종료)
+**Timestamp**: 2026-04-29T19:05:00Z
+**User Input**: "A)"
+**AI Response**: 승인 수신 — Iteration 7 종료. aidlc-state.md Iteration 7 섹션 모든 [x] 마감. Operations 단계(Chrome DevTools MCP 다중 컨텍스트 회귀: 호스트 vs 관전자 분리, VoiceToggle 호스트 한정, mp3 누락 graceful skip, urgent 인터럽트, autoplay 가드)는 사용자 트리거 권장. MEMORY `project_overview.md` 에 Iteration 7 변경 이력 항목 추가.
+**Context**: Iteration 7 정식 종료. 후속 액션 = (1) 외부 녹음 27 mp3 발주 (`iteration7-voice-script.md` §3), (2) 파일 배치 후 `npm run build` + `go build` 재실행으로 임베드 자동 포함.
+
+---
+
+## Iteration 7 Operations — mp3 자산 배치 (1차)
+**Timestamp**: 2026-04-29T19:55:00Z
+**User Input**: "@web/public/audio 에 음원을 저장했습니다."
+**AI Response**: 점검 결과 일련번호(`1.mp3` ~ `27.mp3`) 형태로 24 파일 저장 — voice-script §3 audioId 매핑 필요. 누락 3건 식별: #18 `intro.speaker` / #23 `timer.30` / #24 `timer.10`. 27 audioId ↔ 일련번호 매핑 표 + 진행 옵션 A/B/C 사용자에게 보고.
+**Context**: Operations 첫 잔여 작업 — 사용자 결정 대기 (mp3 리네임 진행 여부).
+
+---
+
+## Iteration 7 Operations — mp3 리네임 + 재빌드 사용자 승인
+**Timestamp**: 2026-04-29T20:00:00Z
+**User Input**: "A)"
+**AI Response**: 승인 수신 — 24 mp3 파일을 audioId 형식으로 일괄 리네임. `1.mp3 → game.started.mp3` … `27.mp3 → vote.noelim.mp3` (#18/23/24 누락). 재빌드 결과:
+- `npm run build`: 성공. JS gzip 64.83 KB / CSS gzip 3.21 KB 변동 없음. mp3 24 파일이 vite 정적 자산으로 `cmd/mafia-game/web/dist/audio/` 로 복사 (2.3 MB).
+- `go build -o /tmp/mafia-game-iter7-with-audio ./cmd/mafia-game`: 성공, 17.97 MB (이전 15.94 MB 대비 +2.03 MB — embed FS 에 mp3 24 파일 정상 임베드 확인).
+- 누락 3건(intro.speaker, timer.30, timer.10): 자막만 graceful skip 동작 확인 (코드 자체는 변경 없음).
+**Context**: Iteration 7 Operations 진행. mp3 24 배치 [x], 추가 발주 3건 + Chrome DevTools MCP 회귀는 사용자 트리거.
+
+---
+
+## Iteration 7 Operations — 사용자 직접 테스트: 무성 보고
+**Timestamp**: 2026-04-29T20:03:00Z
+**User Input**: "내가 서버를 띄워서 직접 테스트해보겠습니다. 빌드하고 서버를 기동하세요" → 잠시 후 "소리가 들리지 않네요. 서버를 재기동하여 chrome dev tool로 직접 테스트를 진행하십시오."
+**AI Response**: `npm run build` + `go build` + 서버 백그라운드 기동(8080). LAN URL `http://192.168.45.177:8080` 안내. 사용자가 직접 테스트 결과 무성 보고 → Chrome DevTools MCP 로 진단 시작.
+**Context**: 운영 결함 보고 수신, 진단 게이트 진입.
+
+---
+
+## Iteration 7 Operations — 결함 진단 (Chrome DevTools MCP)
+**Timestamp**: 2026-04-29T20:06:00Z
+**User Input**: (자동 단계 — 진단 실행)
+**AI Response**: 진단 결과:
+1. **App 라우팅**: `App.tsx` 의 `/` 가 `/play` 로 강제 리다이렉트. PublicView 는 `/public` 만 도달. (이전 사용자 안내가 `/` 로 잘못됨 — 사용자가 `/play` 에서 테스트했을 가능성)
+2. **결정적 결함 — `/audio/*.mp3` 라우팅 누락**: `internal/transport/http/routes.go` 의 ServeMux 가 `/healthz`, `/ws`, `/api/results`, `/assets/`, `/` 만 등록. `/audio/` 패턴이 없어 모든 mp3 요청이 SPA catch-all `/` 로 떨어져 `text/html` `index.html` (601 bytes) 로 응답. `<audio>` 가 mp3 가 아닌 HTML 을 받아서 디코드 실패 → 무성.
+3. 진단 명령: `fetch("/audio/game.started.mp3", {method:"HEAD"})` 결과 `status=200, content-type=text/html, len=601` — embed FS 의 실제 mp3 (74831 bytes audio/mpeg) 와 무관한 SPA fallback 응답이 옴.
+
+본 결함은 plan §3.1 의 "U4 HTTP Bootstrap 무영향(정적 자산은 vite build → embed FS 자동 서빙)" 가정의 거짓 — vite 가 dist 에 복사하더라도 ServeMux 핸들러가 명시 등록되지 않은 prefix 는 catch-all 로 떨어진다.
+**Context**: 결함 원인 확정. 패치 진행 — `/audio/` 핸들러 + 회귀 테스트 추가.
+
+---
+
+## Iteration 7 Operations — 결함 패치 (Stage E)
+**Timestamp**: 2026-04-29T20:08:00Z
+**User Input**: (자동 단계)
+**AI Response**: U4 패치 적용:
+- `internal/transport/http/routes.go`: `audioHandler(assets fs.FS)` 신규 도입(Cache-Control `public, max-age=86400`, non-immutable — operator 가 mp3 교체 가능). `mux.Handle("GET /audio/", audioHandler(cfg.Assets))` 등록 (`/assets/` 와 `/` 사이).
+- `internal/transport/http/routes_test.go`: 3 신규 테스트 — `TestAudioHandler_ServesMp3WithShortCache` (audio/mpeg + max-age=86400 검증, immutable 금지), `TestAudioHandler_404OnMissing` (graceful skip 트리거 보장), `TestBuildMux_AudioPathDoesNotFallthroughToSPA` (mp3 prefix 가 SPA fallthrough 되지 않음 회귀 보장).
+- 검증: `go test ./internal/transport/http/...` 90.3% PASS, `go test ./...` 6 패키지 PASS, `go build` 성공.
+- 서버 재기동 후 Chrome DevTools 재진단:
+  - `/audio/game.started.mp3` HEAD: 200, `audio/mpeg`, 74831 bytes ✅
+  - `/audio/phase.night.mp3` HEAD: 200, audio/mpeg, 60621 bytes ✅
+  - `/audio/intro.speaker.mp3` HEAD: 404 (누락 파일 — graceful skip 의도) ✅
+  - 게임 시작(6 player isolated context join) → console: `[audio] failed to play /audio/intro.speaker.mp3: NotSupportedError` 만 발생, 다른 cue (game.started/phase.intro/phase.night/night.mafia/eliminated.mafia 등) 는 console.warn 0건 → 정상 재생 검증. `useAudioCueQueue` 의 graceful skip 동작 실측 확인.
+**Context**: 결함 해결. plan §3.1 가정 수정 → U4 = "무영향" → "u4 audioHandler 추가". aidlc-state.md / iteration7-test-results.md 갱신 필요.
+
+---

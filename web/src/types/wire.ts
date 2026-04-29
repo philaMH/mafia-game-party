@@ -141,7 +141,10 @@ export interface EventMsg {
 export interface AnnounceMsg {
   type: "announce";
   subtitle: string;
-  speech: string;
+  // Iter7 FR-8.9 — stable cue id mapping to /audio/<audioId>.mp3 on the
+  // host PublicView. Empty when the catalog produced no audio (graceful
+  // skip — Iter7 FR-8.8) or for legacy events without a recording yet.
+  audioId?: string;
   severity: Severity;
 }
 
