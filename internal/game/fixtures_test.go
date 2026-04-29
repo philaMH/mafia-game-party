@@ -80,6 +80,40 @@ func findRole(s State, role Role) (PlayerID, bool) {
 	return "", false
 }
 
+// engineFakeClock returns the *FakeClock backing the given Engine. Panics
+// when the engine was not built with newTestEngine — useful for helpers
+// that need to advance time without threading the clock through every
+// call site.
+func engineFakeClock(t *testing.T, e Engine) *FakeClock {
+	t.Helper()
+	impl, ok := e.(*engine)
+	if !ok {
+		t.Fatalf("engineFakeClock: engine is %T, not *engine", e)
+	}
+	fc, ok := impl.clock.(*FakeClock)
+	if !ok {
+		t.Fatalf("engineFakeClock: clock is %T, not *FakeClock", impl.clock)
+	}
+	return fc
+}
+
+// drainNightIntro advances the engine past the NightStepIntro buffer when
+// the current night step is INTRO. No-op otherwise. Iteration 8: tests
+// that re-enter NIGHT (e.g. via vote on Day 2+) should call this before
+// submitting role actions, matching what advanceToNight does for Night 1.
+func drainNightIntro(t *testing.T, e Engine) {
+	t.Helper()
+	snap := e.Snapshot()
+	if snap.Phase != PhaseNight || snap.NightStep != NightStepIntro {
+		return
+	}
+	fc := engineFakeClock(t, e)
+	fc.T = snap.NightStepDeadline.Add(time.Millisecond)
+	if _, _, err := e.Tick(fc.T); err != nil {
+		t.Fatalf("drainNightIntro: %v", err)
+	}
+}
+
 // advanceNightStep ticks the engine past the current NightStep deadline,
 // causing the engine to either move to the next step or (when DOCTOR
 // expires) call resolveNight() and transition to DAY. Iteration 5: this

@@ -2,6 +2,7 @@ package game
 
 import (
 	"testing"
+	"time"
 )
 
 func TestResolveNight_PeacefulNight(t *testing.T) {
@@ -49,7 +50,10 @@ func TestResolveNight_DiscussionDeadlineSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	state := e.Snapshot()
-	wantDeadline := clock.Now().Add(180 * 1e9)
+	// Iteration 8: NIGHT->DAY adds defaultDayIntroSeconds buffer so the death
+	// announcement cue can play before the discussion timer effectively
+	// begins.
+	wantDeadline := clock.Now().Add(time.Duration(defaultDayIntroSeconds+180) * time.Second)
 	if !state.Deadline.Equal(wantDeadline) {
 		t.Errorf("deadline=%v, want %v", state.Deadline, wantDeadline)
 	}

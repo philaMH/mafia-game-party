@@ -3,11 +3,14 @@ package game
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 // advanceToNight runs the engine through INTRO -> DAY 1 -> VOTE -> NIGHT 1.
 // Day 1 is forced to end immediately and every living player abstains so no
-// elimination occurs before the first night begins.
+// elimination occurs before the first night begins. Iteration 8: NIGHT now
+// starts in NightStepIntro for a 5s announcement buffer; the helper drains
+// the buffer so callers continue to observe NightStep=MAFIA at return.
 func advanceToNight(t *testing.T, e Engine) State {
 	t.Helper()
 	state := e.Snapshot()
@@ -39,6 +42,14 @@ func advanceToNight(t *testing.T, e Engine) State {
 	state = e.Snapshot()
 	if state.Phase != PhaseNight {
 		t.Fatalf("expected NIGHT after Day 1 vote, got %s", state.Phase)
+	}
+	if state.NightStep == NightStepIntro {
+		fc := engineFakeClock(t, e)
+		fc.T = state.NightStepDeadline.Add(time.Millisecond)
+		if _, _, err := e.Tick(fc.T); err != nil {
+			t.Fatalf("Tick to drain INTRO: %v", err)
+		}
+		state = e.Snapshot()
 	}
 	if state.NightStep != NightStepMafia {
 		t.Fatalf("expected NightStep=MAFIA at NIGHT entry, got %q", state.NightStep)

@@ -261,6 +261,9 @@ func TestI4_PoliceHistory_AccumulatesAcrossNights(t *testing.T) {
 	if e.Snapshot().Phase != PhaseNight {
 		t.Fatalf("expected NIGHT 2, got %s", e.Snapshot().Phase)
 	}
+	// Iteration 8: NIGHT now starts in NightStepIntro for a 5s buffer.
+	// Drain it before submitting role actions.
+	drainNightIntro(t, e)
 
 	// Night 2: police investigates a known mafia.
 	mafiaTarget := mafias[0]

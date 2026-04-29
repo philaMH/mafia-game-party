@@ -375,3 +375,59 @@
 - [ ] mp3 추가 녹음 3건 발주 — `intro.speaker.mp3` (자기소개 발언자), `timer.30.mp3` (토론 30초), `timer.10.mp3` (토론 10초). 동일 디렉터리에 두면 다음 빌드부터 자동 임베드.
 - [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (Voice: 호스트 vs 일반 관전자 음성 분리 / VoiceToggle 호스트 한정 / mp3 누락 graceful skip / autoplay 가드 — Host menu: 메인 메뉴 → 설정 라우팅 / localStorage 영속 / host:save-options 송수신 확인 권장)
 
+---
+
+## Iteration 8 Stage Progress (2026-04-29) — Fix · 밤 진입 안내
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~7 산출물 보존, 작업 브랜치 `worktree-fix+vote-result`
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — 사용자 승인 완료 (2026-04-29T21:25Z). `inception/requirements/iteration8-fix-vote-result-requirements.md` v1.0 확정 (Q1=A / Q2=A / Q3=B / Q4=B / Q5=A / Q6=B)
+- [x] User Stories — SKIP (단일 결함 패치, UX 인터벌 1건)
+- [x] Workflow Planning — `construction/plans/iteration8-execution-plan.md` v1.0 (사용자 승인 2026-04-29T21:35Z)
+- [ ] Application Design — SKIP 예정 (컴포넌트 추가 없음, NightStep enum 1건 + 도메인 상수 2건 + 카탈로그 분기 1건)
+- [ ] Units Generation — SKIP 예정 (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION
+
+#### U1 Game Core
+- [x] Functional Design Patch — `u1-game-core/functional-design/iteration8-patch.md` v1.0 (사용자 승인 2026-04-29T21:50Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration8-u1-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29T22:00Z)
+- [x] Code Generation — Step A~F 완료. `types.go` / `resolve_night.go` / `handlers_lifecycle.go` 코드 변경 + `fixtures_test.go` (헬퍼 2건 추가) + `handlers_night_test.go::advanceToNight` (INTRO 자동 드레인) + 신규 `iteration8_test.go` (7 테스트) + 회귀 보정 4건. `go vet` PASS, `go test ./... -count=1 -race` 6 패키지 PASS, `go build` 성공 (17.97 MB), game 커버리지 91.8% (+0.1pp).
+
+#### U2 Session/Announce
+- [x] Functional Design Patch — `u2-session-persistence-announce/functional-design/iteration8-patch.md` v1.0 (사용자 승인 2026-04-29T22:15Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration8-u2-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29T22:25Z)
+- [x] Code Generation — Step A~C 완료. `catalog_default.go` (INTRO silent 분기) + `catalog_test.go` (I8-A1 단언). announce 커버리지 94.3% (+0.3pp). 6 패키지 PASS.
+
+#### U3 Realtime Transport
+- [x] Functional Design Note — `u3-realtime-transport/functional-design/iteration8-patch.md` v1.0 (검증 only, 사용자 승인 2026-04-29T22:35Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation — 코드 변경 0건. `protocol_test.go::TestBuildEventPayload_NightStepIntroSerializes` 회귀 테스트 1건 추가. ws 커버리지 82.3% (baseline 82.4% 대비 -0.1pp — 신규 테스트로 분모 증가).
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — `u5-web-frontend/functional-design/iteration8-patch.md` v1.0 (사용자 승인 2026-04-29T22:50Z)
+- [x] NFR Requirements / Design / Infrastructure — SKIP
+- [x] Code Generation Plan — `construction/plans/iteration8-u5-code-generation-plan.md` v1.0 (사용자 승인 2026-04-29T23:00Z)
+- [x] Code Generation — Step A~D 완료. `wire.ts` (NightStep 유니온 +1), `PublicView.tsx` (INTRO 라벨), `reducer.test.ts` (I8-W1 1건). `npm test` 66 PASS, `npm run build` JS gzip 65.62 KB (baseline 동일), `go build` 17.97 MB.
+
+#### U4 HTTP Bootstrap
+- [x] 모든 단계 SKIP (변경 없음)
+
+#### 공통
+- [x] Build and Test — `build-and-test/iteration8-test-results.md` v1.0 (사용자 최종 승인 2026-04-29T23:20Z). FR-1~FR-8 추적, 패키지 커버리지(announce 94.3% +0.3 / game 91.8% +0.1 / persistence 80.2% / session 87.3% / transport/http 90.3% / transport/ws 82.3% -0.1), JS gzip 65.62 KB · CSS 3.21 KB · binary 17.97 MB, `go test ./... -race` 6 패키지 PASS, `npm test` 66 PASS.
+
+**Iteration 8 종료** (2026-04-29T23:20Z) — VOTE→NIGHT 진입 시 INTRO 5s 무음 버퍼 도입, NIGHT→DAY 진입 시 사망 발표용 5s 버퍼 가산 (첫째날 제외). 변경 미커밋 — 사용자 commit 지시 대기.
+
+**Iteration 8 사후 튜닝 (2026-04-29T23:30Z)**: 사용자 지시로 `defaultNightIntroSeconds` 5 → 15 조정 (`defaultDayIntroSeconds` 는 5 유지). 6 패키지 race PASS, go build 성공. 미커밋.
+
+**Iteration 8 사후 튜닝 #2 (2026-04-29T23:35Z)**: `defaultNightIntroSeconds` 15 → 20. 6 패키지 PASS, go build 성공. 미커밋.
+
+### 🟡 OPERATIONS
+- [ ] Chrome DevTools MCP 회귀 (호스트 + 7 player) — 투표 종료→밤 안내 5s→마피아 시간 / 사망 발표→5s→토론 타이머 / 첫째날 버퍼 없음 / INTRO 중 Pause 거부
+
+### 🟡 OPERATIONS
+- [ ] (placeholder)
+

@@ -145,6 +145,12 @@ func TestRender_NightStepChanged(t *testing.T) {
 	if !a.IsEmpty() {
 		t.Errorf("RESOLVED step should be silent, got %+v", a)
 	}
+	// Iteration 8: INTRO is the 5s announcement buffer; phase.night carries
+	// the speech, so NightStepChanged{INTRO} itself is silent.
+	intro := render(t, game.NightStepChanged{Step: game.NightStepIntro}, game.VisPublic)
+	if !intro.IsEmpty() {
+		t.Errorf("INTRO step should be silent, got %+v", intro)
+	}
 }
 
 func TestRender_GamePausedAndResumed(t *testing.T) {

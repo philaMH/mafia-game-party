@@ -80,6 +80,10 @@ func (defaultCatalog) Render(env game.EventEnvelope, ctx CatalogContext) Announc
 
 	case game.NightStepChanged:
 		switch e.Step {
+		case game.NightStepIntro:
+			// Iteration 8: PhaseChanged{NIGHT} 의 phase.night cue 가 안내를
+			// 담당하므로 INTRO 단계는 별도 cue 를 발화하지 않는다.
+			return Announcement{}
 		case game.NightStepMafia:
 			return ann(msgNightStepMafia, cueNightMafia, SeverityEmphasis)
 		case game.NightStepPolice:

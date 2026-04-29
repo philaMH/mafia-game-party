@@ -51,13 +51,17 @@ const (
 )
 
 // NightStep tracks which role is currently acting during PhaseNight. The
-// engine forces strict ordering MAFIA -> POLICE -> DOCTOR; submissions for
-// any other step are rejected. NightStepResolved is the terminal value used
-// briefly while resolveNight() runs; outside PhaseNight the field is empty.
+// engine forces strict ordering INTRO -> MAFIA -> POLICE -> DOCTOR;
+// submissions for any other step are rejected. NightStepResolved is the
+// terminal value used briefly while resolveNight() runs; outside PhaseNight
+// the field is empty. INTRO (Iteration 8) is a short announcement buffer at
+// NIGHT entry so the host's `phase.night` cue can finish before mafia time
+// begins.
 type NightStep string
 
 // NightStep constants.
 const (
+	NightStepIntro    NightStep = "INTRO"
 	NightStepMafia    NightStep = "MAFIA"
 	NightStepPolice   NightStep = "POLICE"
 	NightStepDoctor   NightStep = "DOCTOR"
@@ -106,10 +110,16 @@ type Options struct {
 // Default night step durations applied when Options leaves them at zero.
 // Iteration 5: the engine treats every NightStep as a fixed wall-clock
 // window so role-death cannot leak through accelerated transitions.
+//
+// Iteration 8 adds two announcement buffers that are intentionally NOT
+// exposed via Options (Q3=B / Q5=A): the engine always uses the constant
+// so the UX stays predictable across hosts.
 const (
 	defaultNightMafiaSeconds  = 30
 	defaultNightPoliceSeconds = 10
 	defaultNightDoctorSeconds = 10
+	defaultNightIntroSeconds  = 20
+	defaultDayIntroSeconds    = 5
 )
 
 // DefaultOptions returns the recommended defaults derived from
@@ -133,6 +143,8 @@ func DefaultOptions(playerCount int) Options {
 func nightStepSeconds(opts Options, step NightStep) int {
 	var v, def int
 	switch step {
+	case NightStepIntro:
+		return defaultNightIntroSeconds
 	case NightStepMafia:
 		v, def = opts.NightMafiaSeconds, defaultNightMafiaSeconds
 	case NightStepPolice:
