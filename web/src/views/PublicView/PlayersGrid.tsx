@@ -21,37 +21,62 @@ export function PlayersGrid({ players, phase }: Props) {
   const lobby = phase === "LOBBY";
   return (
     <div
+      className="vote-tile-grid"
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(8rem, 1fr))",
-        gap: "1rem",
-        padding: "1rem",
+        gridTemplateColumns: "repeat(auto-fit, minmax(9rem, 1fr))",
+        gap: "0.85rem",
+        padding: "0.5rem 1.25rem 1rem",
       }}
     >
-      {players.map((p) => (
+      {players.map((p, i) => (
         <div
           key={p.id}
-          style={{
-            background: "var(--card)",
-            border: `2px solid ${p.alive ? "var(--alive)" : "var(--dead)"}`,
-            borderRadius: "0.5rem",
-            padding: "1rem",
-            textAlign: "center",
-            opacity: p.alive ? 1 : 0.6,
-          }}
+          className={"vote-tile" + (!p.alive ? " dead" : "")}
+          style={{ cursor: "default" }}
         >
-          <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
-            {p.name} {!p.alive && <span aria-label="사망">✕</span>}
+          <span className="vt-meta">{String(i + 1).padStart(2, "0")}</span>
+          <div className={"avatar" + (!p.alive ? " dead" : "")}>{p.name.slice(0, 1)}</div>
+          <div className="vt-name" style={{ color: p.alive ? "var(--paper)" : "var(--dead)" }}>
+            {p.name}
+            {!p.alive && <span aria-label="사망" style={{ marginLeft: "0.25rem" }}>✕</span>}
           </div>
           {reveal && p.role && (
-            <div style={{ marginTop: "0.5rem", color: "var(--fg-muted)" }}>
+            <span
+              className="mono"
+              style={{
+                fontSize: "0.7rem",
+                color: p.role === "MAFIA" ? "var(--red)" : "var(--gold)",
+                letterSpacing: "0.18em",
+              }}
+            >
               {ROLE_KR[p.role] ?? p.role}
-            </div>
+            </span>
           )}
           {lobby && (
-            <div style={{ marginTop: "0.5rem", color: "var(--fg-muted)" }}>
-              대기 중
-            </div>
+            <span className="vt-meta" style={{ color: "var(--paper-dim)" }}>
+              READY
+            </span>
+          )}
+          {!p.alive && (
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-display)",
+                color: "var(--red-deep)",
+                fontSize: "2rem",
+                letterSpacing: "0.3em",
+                opacity: 0.45,
+                pointerEvents: "none",
+              }}
+            >
+              ×
+            </span>
           )}
         </div>
       ))}

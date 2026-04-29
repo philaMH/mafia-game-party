@@ -4,7 +4,7 @@
 - **Project Name**: mafia-game
 - **Project Type**: Greenfield
 - **Start Date**: 2026-04-25T00:00:00Z
-- **Current Stage**: ITERATION 3 — Late-Joiner Sync (옵션 A) 완료 (2026-04-29). U2 `RoomSnapshot()` API + U3 `Register()` 시점 single-client push 구현, 11건 신규 테스트 전 PASS, `go test ./...` 6 패키지 PASS, `go build` 성공 (15 MB), Chrome DevTools MCP late-joiner 회귀 검증 PASS (방 개설 → 새 `/play` 탭 → "닉네임 입력" 즉시 진입). U2 커버리지 87.4 → 88.2%, U3 87.0 → 87.2%. (이전 ITERATION 2: Construction 자동 위임 완료, Build/Test 사용자 승인 대기 상태 유지)
+- **Current Stage**: ITERATION 6 — Noir UI 시각 재설계 완료 (2026-04-29). U5 단독 변경, Go 백엔드 무영향. `noir.css` 신설(32 클래스) + 27 view/component 노이르 적용 + `background.jpg` 198 KB 임베드. `npm test` 45 PASS 유지, `npm run build` 성공 (JS gzip 64.93 KB, +3.18 KB), `go build` 성공 (15.2 MB), `go test ./...` 6 패키지 PASS. Build and Test 사용자 승인 대기. (이전 ITERATION 5: Pause/Resume + NightStep 시간 제어 — 사용자 승인 대기 유지)
 
 ## Workspace State
 - **Existing Code**: No
@@ -251,4 +251,39 @@
 
 ### 🟡 OPERATIONS
 - [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (사용자 트리거 권장: 경찰 사망 후 NightStep 시간 유지 / Pause·Resume 토글)
+
+---
+
+## Iteration 6 Stage Progress (2026-04-29)
+
+### 🔵 INCEPTION
+- [x] Workspace Detection — Brownfield, 5단위 구조 + Iteration 1~5 산출물 보존
+- [x] Reverse Engineering — SKIP (기존 산출물 활용)
+- [x] Requirements Analysis — `inception/requirements/iteration6-requirements.md` (사용자 승인 2026-04-29T07:55Z, Q1=D / Q2=B / Q3=A / Q4=A)
+- [x] User Stories — SKIP (단일 시각 작업)
+- [x] Workflow Planning — `construction/plans/iteration6-execution-plan.md` (사용자 승인 2026-04-29T08:05Z)
+- [x] Application Design — SKIP (컴포넌트 추가/제거 없음)
+- [x] Units Generation — SKIP (5단위 구조 유지)
+
+### 🟢 CONSTRUCTION
+
+#### U1 Game Core / U2 Session/Persistence/Announce / U3 Realtime Transport / U4 HTTP Bootstrap
+- [x] 모든 단계 SKIP (Go 코드 변경 없음)
+
+#### U5 Web Frontend
+- [x] Functional Design Patch — plan §3 으로 갈음 (Minimal)
+- [x] NFR Requirements — SKIP
+- [x] NFR Design — SKIP
+- [x] Infrastructure Design — SKIP
+- [x] Code Generation Plan — plan §5 체크리스트로 갈음
+- [x] Code Generation —
+  - 신규: `web/src/styles/noir.css` (8.5 KB / 32 클래스), `web/public/assets/background.jpg` (198 KB, 1.9 MB → 90% 감소)
+  - 수정: 27 파일 (8 PublicView + 12 PlayerView + 4 components + 3 bootstrap)
+  - 검증: `npm test` 45 PASS, `npm run build` 성공 (JS gzip 64.93 KB / CSS gzip 3.21 KB), `go build -o /tmp/mafia-game-iter6` 성공 (15.2 MB), `go test ./...` 6 패키지 PASS
+
+#### 공통
+- [x] Build and Test — `aidlc-docs/construction/build-and-test/iteration6-test-results.md` 작성, 사용자 승인 완료 (2026-04-29T08:55Z).
+
+### 🟡 OPERATIONS
+- [ ] Chrome DevTools MCP 다중 컨텍스트 회귀 (노이르 배경 가시성 / role-card 5:7 / vote-tile target / PauseBadge pulse / EndScreen dossier 확인 권장)
 

@@ -13,46 +13,57 @@ export function IntroView({ state, me, your, send }: Props) {
   const isMyTurn = speaker?.id === me;
 
   return (
-    <section style={{ padding: "1rem", textAlign: "center" }}>
-      <h2 style={{ fontSize: "1.75rem" }}>자기소개 단계</h2>
+    <section style={{ padding: "0.5rem 0 1rem", textAlign: "center" }}>
+      <div className="eyebrow">INTRODUCTIONS · 자기소개</div>
+      <h2
+        className="h-display"
+        style={{ fontSize: "1.4rem", color: "var(--paper)", margin: "0.5rem 0 1rem", letterSpacing: "0.16em" }}
+      >
+        자기소개 단계
+      </h2>
       {isMyTurn ? (
         <div
-          style={{
-            marginTop: "1rem",
-            padding: "1rem",
-            background: "var(--accent)",
-            color: "#fff",
-            borderRadius: "0.5rem",
-          }}
+          className="center-card"
+          style={{ padding: "1.5rem 1.5rem", border: "1px solid var(--gold)", boxShadow: "0 0 24px var(--gold-glow)" }}
         >
-          <p style={{ fontSize: "1.25rem", margin: 0 }}>지금 자기소개를 시작하세요.</p>
+          <div className="eyebrow" style={{ marginBottom: "0.6rem" }}>
+            NOW SPEAKING · 당신의 차례
+          </div>
+          <p
+            className="h-display"
+            style={{ fontSize: "1.25rem", color: "var(--paper)", margin: 0, letterSpacing: "0.14em" }}
+          >
+            지금 자기소개를 시작하세요.
+          </p>
           {your.keyword && (
-            <p style={{ marginTop: "0.5rem" }}>
-              키워드: <strong>{your.keyword}</strong>
+            <p
+              className="mono"
+              style={{
+                marginTop: "0.85rem",
+                color: "var(--gold)",
+                fontSize: "1.1rem",
+                letterSpacing: "0.25em",
+              }}
+            >
+              {your.keyword}
             </p>
           )}
           {send && (
             <button
               type="button"
+              className="btn-noir primary"
               onClick={() => send({ type: "player:end-self-intro" })}
-              style={{
-                marginTop: "1rem",
-                padding: "0.5rem 1.5rem",
-                fontSize: "1rem",
-                background: "#fff",
-                color: "var(--accent)",
-                border: "none",
-                borderRadius: "0.25rem",
-                cursor: "pointer",
-              }}
+              style={{ marginTop: "1.25rem" }}
             >
               내 자기소개 종료
             </button>
           )}
         </div>
       ) : (
-        <p style={{ color: "var(--fg-muted)" }}>
-          {speaker ? `${speaker.name}이(가) 자기소개 중입니다.` : "다음 발언자를 기다리는 중…"}
+        <p className="serif" style={{ color: "var(--paper-dim)", fontStyle: "italic", lineHeight: 1.6 }}>
+          {speaker
+            ? `「${speaker.name}」이(가) 자기소개 중입니다.`
+            : "다음 발언자를 기다리는 중…"}
         </p>
       )}
     </section>

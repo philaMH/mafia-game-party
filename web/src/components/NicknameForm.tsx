@@ -31,18 +31,19 @@ export function NicknameForm({ prompt, onSubmit }: Props) {
   };
 
   return (
-    <form onSubmit={submit} aria-label={prompt}>
+    <form
+      onSubmit={submit}
+      aria-label={prompt}
+      style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}
+    >
       <label
-        style={{
-          display: "block",
-          fontSize: "1.125rem",
-          marginBottom: "0.5rem",
-          color: "var(--fg)",
-        }}
+        className="eyebrow"
+        style={{ display: "block", color: "var(--paper-2)" }}
       >
         {prompt}
       </label>
       <input
+        className="noir-input"
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -50,16 +51,19 @@ export function NicknameForm({ prompt, onSubmit }: Props) {
         autoFocus
         aria-invalid={!!error}
         aria-describedby={error ? "nickname-error" : undefined}
-        style={{ width: "100%", maxWidth: "20rem" }}
+        style={{ width: "100%" }}
       />
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
-        <button type="submit">입장</button>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <button type="submit" className="btn-noir primary" style={{ flex: 1 }}>
+          <span aria-hidden style={{ marginRight: "0.4rem" }}>♠</span>입장
+        </button>
       </div>
       {error && (
         <p
           id="nickname-error"
           role="alert"
-          style={{ color: "var(--warn)", marginTop: "0.5rem" }}
+          className="serif"
+          style={{ color: "var(--red)", fontStyle: "italic", margin: 0 }}
         >
           {error}
         </p>
