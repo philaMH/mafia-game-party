@@ -5,13 +5,15 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useState,
   type ReactNode,
 } from "react";
 
 import { useToken } from "../hooks/useToken";
 import { useTTSQueue } from "../hooks/useTTSQueue";
 import { useWebSocket } from "../hooks/useWebSocket";
-import type { OutgoingMsg } from "../types/wire";
+import { loadSavedOptions, saveOptions } from "../lib/optionsStorage";
+import { defaultOptions, type Options, type OutgoingMsg } from "../types/wire";
 
 import {
   gameReducer,
@@ -25,9 +27,12 @@ export interface GameContextValue extends GameState {
   toggleVoice(on: boolean): void;
   ackError(addedAt: number): void;
   logout(): void;
+  // Iteration 7 — host main menu / settings route.
+  hostOptions: Options;
+  saveHostOptions(opts: Options): void;
 }
 
-const GameContext = createContext<GameContextValue | null>(null);
+export const GameContext = createContext<GameContextValue | null>(null);
 
 const URGENT_KINDS = new Set([
   "PhaseChanged",
@@ -123,9 +128,29 @@ export function GameProvider({ children, url }: GameProviderProps) {
     dispatch({ type: "logout" });
   }, [tokenIO]);
 
+  const [hostOptions, setHostOptions] = useState<Options>(
+    () => loadSavedOptions() ?? defaultOptions(8),
+  );
+  const saveHostOptions = useCallback(
+    (opts: Options) => {
+      setHostOptions(opts);
+      saveOptions(opts);
+      send({ type: "host:save-options", options: opts });
+    },
+    [send],
+  );
+
   const value: GameContextValue = useMemo(
-    () => ({ ...state, send, toggleVoice, ackError, logout }),
-    [state, send, toggleVoice, ackError, logout],
+    () => ({
+      ...state,
+      send,
+      toggleVoice,
+      ackError,
+      logout,
+      hostOptions,
+      saveHostOptions,
+    }),
+    [state, send, toggleVoice, ackError, logout, hostOptions, saveHostOptions],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
