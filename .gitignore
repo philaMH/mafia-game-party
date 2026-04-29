@@ -1,0 +1,22 @@
+# Build artifacts
+/mafia-game
+/dist/
+*.exe
+*.test
+*.out
+
+# Runtime data
+/data/*.db
+/data/*.db-journal
+/data/*.db-wal
+/data/*.db-shm
+
+# Frontend build output (embedded by Go at build time)
+/web/dist/
+/web/node_modules/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

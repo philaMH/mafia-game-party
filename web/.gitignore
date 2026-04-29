@@ -1,0 +1,13 @@
+node_modules/
+*.log
+
+# Vite outputs into ../cmd/mafia-game/web/dist (committed placeholder only).
+dist/
+
+# Vitest
+coverage/
+
+# Editor
+.idea/
+.vscode/
+.DS_Store

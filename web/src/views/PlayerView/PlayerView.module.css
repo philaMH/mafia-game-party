@@ -1,0 +1,11 @@
+/* PlayerView module styles. The view itself uses inline styles for
+ * layout; this file holds reusable class hooks for animation and
+ * data-attribute styling. */
+
+.alive {
+  border-color: var(--alive);
+}
+.dead {
+  border-color: var(--dead);
+  opacity: 0.6;
+}

@@ -1,0 +1,25 @@
+/* PublicView shared module styles. The view itself uses inline styles
+ * for layout primitives; this file holds reusable severity stylings
+ * applied via `data-severity` attributes (P-U5-6). */
+
+.subtitle[data-severity="INFO"] {
+  color: var(--info);
+}
+.subtitle[data-severity="EMPHASIS"] {
+  color: var(--emphasis);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+.subtitle[data-severity="WARN"] {
+  color: var(--warn);
+  animation: pulse 1s ease-in-out 0s 3;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
