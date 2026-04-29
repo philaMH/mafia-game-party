@@ -18,8 +18,15 @@ interface Props {
 export function NightInputs({ state, your, me, meRow, send }: Props) {
   if (meRow && !meRow.alive) {
     return (
-      <section style={{ padding: "1rem" }}>
-        <p style={{ color: "var(--fg-muted)" }}>
+      <section
+        className="center-card"
+        style={{ padding: "1.25rem 1.5rem", textAlign: "center", margin: "1rem 0" }}
+      >
+        <div className="eyebrow red">SILENCED · 사망</div>
+        <p
+          className="serif"
+          style={{ color: "var(--paper-dim)", fontStyle: "italic", marginTop: "0.5rem", lineHeight: 1.6 }}
+        >
           당신은 사망했습니다. 야간 진행을 관전하세요.
         </p>
       </section>
@@ -36,8 +43,16 @@ export function NightInputs({ state, your, me, meRow, send }: Props) {
     case "CITIZEN":
     default:
       return (
-        <section style={{ padding: "1rem" }}>
-          <p>밤이 지나가길 기다리세요.</p>
+        <section
+          style={{ padding: "1rem 0", textAlign: "center" }}
+        >
+          <div className="eyebrow">CITIZEN · 시민</div>
+          <p
+            className="serif"
+            style={{ color: "var(--paper-dim)", fontStyle: "italic", marginTop: "0.5rem", lineHeight: 1.6 }}
+          >
+            도시는 잠들었다. 밤이 지나가길 기다리세요.
+          </p>
         </section>
       );
   }

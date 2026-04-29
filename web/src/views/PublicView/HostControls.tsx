@@ -27,18 +27,24 @@ export function HostControls({ state, send }: Props) {
 
   return (
     <div
+      className="gold-frame"
       style={{
         display: "flex",
         flexWrap: "wrap",
-        gap: "0.5rem",
+        gap: "0.6rem",
         justifyContent: "center",
-        padding: "1rem",
-        borderTop: "1px solid var(--border)",
+        alignItems: "center",
+        padding: "0.85rem 1rem",
+        margin: "1rem 1.25rem 0",
       }}
     >
+      <span className="eyebrow" style={{ marginRight: "0.5rem" }}>
+        HOST CONTROLS
+      </span>
       {phase === "LOBBY" && (
         <button
           type="button"
+          className="btn-noir primary sm"
           disabled={!canStart}
           onClick={() => send({ type: "host:start-room" })}
         >
@@ -47,45 +53,47 @@ export function HostControls({ state, send }: Props) {
         </button>
       )}
       {phase === "INTRO" && (
-        <button type="button" onClick={() => send({ type: "submit:advance-intro" })}>
+        <button
+          type="button"
+          className="btn-noir sm"
+          onClick={() => send({ type: "submit:advance-intro" })}
+        >
           다음 발언자
         </button>
       )}
       {phase === "DAY" && (
-        <button type="button" onClick={() => send({ type: "submit:end-discussion" })}>
+        <button
+          type="button"
+          className="btn-noir sm"
+          onClick={() => send({ type: "submit:end-discussion" })}
+        >
           토론 조기 종료
         </button>
       )}
-      {canPause && (
-        paused ? (
+      {canPause &&
+        (paused ? (
           <button
             type="button"
+            className="btn-noir sm"
             onClick={() => send({ type: "host:resume" })}
-            style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+            style={{ borderColor: "var(--alive)", color: "var(--alive)" }}
           >
             ▶ 재개
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => send({ type: "host:pause" })}
-          >
+          <button type="button" className="btn-noir sm ghost" onClick={() => send({ type: "host:pause" })}>
             ⏸ 일시정지
           </button>
-        )
-      )}
+        ))}
       {phase !== "END" && (
-        <button
-          type="button"
-          onClick={onForceEnd}
-          style={{ borderColor: "var(--warn)", color: "var(--warn)" }}
-        >
-          강제 종료
+        <button type="button" className="btn-noir sm warn" onClick={onForceEnd}>
+          ⚠ 강제 종료
         </button>
       )}
       {phase === "END" && (
         <button
           type="button"
+          className="btn-noir sm"
           onClick={() => {
             if (window.confirm("현재 방을 종료하고 새 방을 개설할 준비를 할까요?")) {
               send({ type: "host:close-room" });

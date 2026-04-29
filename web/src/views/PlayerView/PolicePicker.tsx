@@ -12,11 +12,6 @@ const TEAM_KR: Record<string, string> = {
   CITIZEN: "시민",
 };
 
-// PolicePicker is the once-per-night investigation input. After the
-// engine flips `policeCheckedThisNight`, the picker disables itself.
-// The full investigation history (every prior night) is rendered below
-// the picker so a returning officer can review past findings — backed
-// by State.policeHistory which the server snapshots privately.
 export function PolicePicker({ state, me, send }: Props) {
   const isMyTurn = state.nightStep === "POLICE";
   const candidates = state.players.filter((p) => p.alive && p.id !== me);
@@ -26,43 +21,67 @@ export function PolicePicker({ state, me, send }: Props) {
     state.players.find((p) => p.id === id)?.name ?? id;
 
   return (
-    <section style={{ padding: "1rem" }}>
-      <h3 style={{ marginTop: 0 }}>경찰 조사</h3>
-      {!isMyTurn ? (
-        <p style={{ color: "var(--fg-muted)" }}>
-          아직 경찰 차례가 아닙니다. 사회자의 진행을 기다리세요.
-        </p>
-      ) : checked ? (
-        <p style={{ color: "var(--fg-muted)" }}>
-          이번 밤에는 조사를 완료했습니다.
-        </p>
-      ) : (
-        <p style={{ color: "var(--fg-muted)" }}>
-          조사할 대상을 선택하세요. 한 밤에 한 번 가능합니다.
-        </p>
-      )}
+    <section style={{ padding: "0.5rem 0 1rem" }}>
+      <div className="eyebrow">POLICE · 경찰 조사</div>
+      <h3
+        className="h-display"
+        style={{ fontSize: "1.2rem", color: "var(--paper)", margin: "0.5rem 0 0.75rem", letterSpacing: "0.16em" }}
+      >
+        의심스러운 자를 조사하라
+      </h3>
+      <p
+        className="serif"
+        style={{ color: "var(--paper-dim)", fontStyle: "italic", lineHeight: 1.6, fontSize: "0.95rem", marginBottom: "0.85rem" }}
+      >
+        {!isMyTurn
+          ? "아직 경찰 차례가 아닙니다. 사회자의 진행을 기다리세요."
+          : checked
+            ? "이번 밤에는 조사를 완료했습니다."
+            : "조사할 대상을 선택하세요. 한 밤에 한 번 가능합니다."}
+      </p>
       <PlayerPicker
         players={candidates}
         disabled={!isMyTurn || checked}
         onChange={(target) => send({ type: "submit:police-check", target })}
       />
       {history.length > 0 && (
-        <div style={{ marginTop: "1rem" }}>
-          <h4 style={{ marginBottom: "0.25rem" }}>조사 기록</h4>
+        <div
+          className="gold-frame"
+          style={{ marginTop: "1rem", padding: "0.85rem 1rem" }}
+        >
+          <div className="eyebrow" style={{ marginBottom: "0.5rem" }}>
+            DOSSIER · 조사 기록
+          </div>
           <ul
             style={{
+              listStyle: "none",
               margin: 0,
-              paddingLeft: "1.25rem",
-              color: "var(--accent)",
+              padding: 0,
               display: "flex",
               flexDirection: "column",
-              gap: "0.25rem",
+              gap: "0.4rem",
             }}
           >
             {history.map((rec, idx) => (
-              <li key={`${rec.day}-${rec.target}-${idx}`}>
-                {rec.day}일째 밤: <strong>{nameOf(rec.target)}</strong>은(는){" "}
-                <strong>{TEAM_KR[rec.team]}</strong> 진영
+              <li
+                key={`${rec.day}-${rec.target}-${idx}`}
+                className="serif"
+                style={{
+                  fontSize: "0.92rem",
+                  color: "var(--paper)",
+                  paddingBottom: "0.4rem",
+                  borderBottom: "1px dashed rgba(201,169,97,0.15)",
+                }}
+              >
+                <span className="mono" style={{ color: "var(--paper-dim)", marginRight: "0.5rem" }}>
+                  D{rec.day}
+                </span>
+                <strong style={{ color: "var(--paper)" }}>{nameOf(rec.target)}</strong>
+                <span style={{ color: "var(--paper-dim)" }}> 은(는) </span>
+                <strong style={{ color: rec.team === "MAFIA" ? "var(--red)" : "var(--alive)" }}>
+                  {TEAM_KR[rec.team]}
+                </strong>{" "}
+                <span style={{ color: "var(--paper-dim)" }}>진영</span>
               </li>
             ))}
           </ul>

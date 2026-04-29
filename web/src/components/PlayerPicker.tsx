@@ -12,48 +12,53 @@ interface ItemProps {
   player: Player;
   selected: boolean;
   disabled: boolean;
+  index: number;
   onSelect: (id: PlayerID) => void;
 }
 
-const Item = memo(function Item({ player, selected, disabled, onSelect }: ItemProps) {
+const Item = memo(function Item({ player, selected, disabled, index, onSelect }: ItemProps) {
+  const inactive = disabled || !player.alive;
   return (
     <button
       type="button"
-      aria-pressed={selected}
-      disabled={disabled || !player.alive}
+      role="radio"
+      aria-checked={selected}
+      disabled={inactive}
       onClick={() => onSelect(player.id)}
-      style={{
-        background: selected ? "var(--accent)" : "var(--card)",
-        color: selected ? "#fff" : "var(--fg)",
-        opacity: player.alive ? 1 : 0.4,
-        padding: "0.5rem 1rem",
-        borderRadius: "0.375rem",
-        border: "1px solid var(--border)",
-        minWidth: "6rem",
-      }}
+      className={"vote-tile" + (selected ? " selected" : "") + (!player.alive ? " dead" : "")}
+      style={{ minWidth: "6.5rem" }}
     >
-      {player.name}
-      {!player.alive && <span aria-hidden> ✕</span>}
+      <span className="vt-meta">{String(index + 1).padStart(2, "0")}</span>
+      <div className={"avatar sm" + (!player.alive ? " dead" : selected ? " target" : "")}>
+        {player.name.slice(0, 1)}
+      </div>
+      <span className="vt-name">
+        {player.name}
+        {!player.alive && <span aria-hidden> ✕</span>}
+      </span>
     </button>
   );
 });
 
-// PlayerPicker shows a horizontal radio-style list. Selection sends
-// immediately (BR-U5-INPUT-2). Items are memoised by player id so
-// re-renders triggered by unrelated state changes do not cascade.
+// PlayerPicker shows a noir-styled grid of selectable player tiles.
+// Selection sends immediately (BR-U5-INPUT-2). Items are memoised by
+// player id so re-renders triggered by unrelated state changes do not
+// cascade.
 export function PlayerPicker({ players, value, disabled, onChange }: Props) {
   return (
     <div
       role="radiogroup"
+      className="vote-tile-grid"
       style={{
-        display: "flex",
-        flexWrap: "wrap",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(6.5rem, 1fr))",
         gap: "0.5rem",
       }}
     >
-      {players.map((p) => (
+      {players.map((p, i) => (
         <Item
           key={p.id}
+          index={i}
           player={p}
           selected={p.id === value}
           disabled={!!disabled}

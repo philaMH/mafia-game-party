@@ -8,16 +8,16 @@ export function VoiceToggle({ on, available, onChange }: Props) {
   return (
     <button
       type="button"
+      className={"btn-noir sm" + (on ? "" : " ghost")}
       disabled={!available}
       onClick={() => onChange(!on)}
       title={!available ? "이 브라우저는 음성 안내를 지원하지 않습니다" : ""}
       style={{
-        padding: "0.5rem 0.75rem",
-        background: on ? "var(--accent)" : "var(--card)",
-        color: on ? "#fff" : "var(--fg)",
+        borderColor: on ? "var(--alive)" : undefined,
+        color: on ? "var(--alive)" : undefined,
       }}
     >
-      음성 안내 {on ? "ON" : "OFF"}
+      {on ? "🔊" : "🔇"} 음성 안내 {on ? "ON" : "OFF"}
     </button>
   );
 }

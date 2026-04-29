@@ -13,9 +13,6 @@ interface Props {
 
 const TTL_MS = 5000;
 
-// ToastList auto-dismisses each entry 5 s after it was added (BR-U5-ERR-2).
-// We schedule a single timer for the oldest entry; expired older entries
-// are cleared on each render so the list never piles up.
 export function ToastList({ errors, onDismiss }: Props) {
   useEffect(() => {
     if (errors.length === 0) return;
@@ -40,23 +37,36 @@ export function ToastList({ errors, onDismiss }: Props) {
         flexDirection: "column",
         gap: "0.5rem",
         maxWidth: "20rem",
+        zIndex: 200,
       }}
     >
       {errors.map((e) => (
-        <div
+        <button
+          type="button"
           key={e.addedAt}
           onClick={() => onDismiss(e.addedAt)}
+          className="serif"
           style={{
-            background: "var(--card)",
-            color: "var(--warn)",
-            border: "1px solid var(--warn)",
-            padding: "0.5rem 0.75rem",
-            borderRadius: "0.375rem",
+            background: "linear-gradient(180deg, rgba(58,14,14,0.92), rgba(20,4,4,0.95))",
+            color: "var(--paper)",
+            border: "1px solid var(--red)",
+            padding: "0.6rem 0.85rem",
             cursor: "pointer",
+            textAlign: "left",
+            fontStyle: "italic",
+            boxShadow: "0 0 18px var(--red-glow)",
+            letterSpacing: "0.02em",
+            borderRadius: 0,
           }}
         >
+          <span
+            className="eyebrow red"
+            style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.65rem" }}
+          >
+            ALERT
+          </span>
           {e.message}
-        </div>
+        </button>
       ))}
     </div>
   );

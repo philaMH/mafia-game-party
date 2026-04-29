@@ -2,10 +2,6 @@ interface Props {
   paused: boolean;
 }
 
-// PauseBadge is a fixed-position banner shown while the host has frozen
-// the active timer (Iteration 5 R4). It overlays the rest of the public
-// view with a soft tint so spectators immediately notice the freeze
-// while still being able to read the underlying state.
 export function PauseBadge({ paused }: Props) {
   if (!paused) return null;
   return (
@@ -17,17 +13,22 @@ export function PauseBadge({ paused }: Props) {
         top: 0,
         left: 0,
         right: 0,
-        padding: "0.5rem 1rem",
+        padding: "0.65rem 1rem",
         textAlign: "center",
-        background: "rgba(255, 200, 0, 0.85)",
-        color: "#222",
-        fontWeight: 600,
-        fontSize: "1.1rem",
+        background: "linear-gradient(180deg, rgba(20,14,10,0.95), rgba(10,8,7,0.92))",
+        color: "var(--gold)",
+        borderBottom: "1px solid var(--gold)",
+        fontFamily: "var(--font-display)",
+        fontWeight: 700,
+        fontSize: "0.95rem",
+        letterSpacing: "0.32em",
+        textTransform: "uppercase",
         zIndex: 100,
-        letterSpacing: "0.05em",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.5), inset 0 -1px 0 var(--gold-glow)",
+        animation: "pulse-soft 2.4s ease-in-out infinite",
       }}
     >
-      ⏸ 진행이 일시정지되었습니다
+      ⏸&nbsp;&nbsp;진행이 일시정지되었습니다
     </div>
   );
 }
