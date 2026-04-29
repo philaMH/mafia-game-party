@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { ConnectionBadge } from "../../components/ConnectionBadge";
 import { ToastList } from "../../components/ToastList";
 import { useGameContext } from "../../context/GameContext";
+import { useBgm } from "../../hooks/useBgm";
 
+import { BgmToggle } from "./BgmToggle";
 import { HostControls } from "./HostControls";
 import { HostHomeView } from "./HostHomeView";
 import { PauseBadge } from "./PauseBadge";
@@ -63,6 +65,7 @@ const FullScreenSection = ({ children }: { children: React.ReactNode }) => (
 export function PublicView() {
   const ctx = useGameContext();
   const [claimSent, setClaimSent] = useState(false);
+  const [bgmOn, setBgmOn] = useState(true);
 
   useEffect(() => {
     // Iteration 7: PublicView remounts when the host navigates back from
@@ -78,6 +81,8 @@ export function PublicView() {
   }, [ctx, claimSent]);
 
   const isHost = ctx.isHost;
+  useBgm(isHost && bgmOn && Boolean(ctx.hostToken));
+
   const bgClass = ctx.state?.phase === "VOTE" || ctx.state?.phase === "RECOUNT"
     ? "noir-bg bloody crop-table"
     : ctx.state?.phase === "NIGHT"
@@ -193,6 +198,7 @@ export function PublicView() {
             이 브라우저는 음성 안내를 지원하지 않습니다. 자막으로 대체합니다.
           </span>
         )}
+        {isHost && <BgmToggle on={bgmOn} onChange={setBgmOn} />}
         {isHost && (
           <VoiceToggle
             on={ctx.voiceOn}
